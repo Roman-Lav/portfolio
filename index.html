@@ -7,6 +7,20 @@
   <meta name="description" content="Favorite albums of Roman Lav.">
   <link rel="icon" href="orange.jpg">
   <title>Lav</title>
+
+  <!-- Apply the saved theme (or the system one) before the first paint, so there is no flash -->
+  <script>
+    (function () {
+      var theme = null;
+      try { theme = localStorage.getItem('theme'); } catch (e) {}
+      if (theme !== 'light' && theme !== 'dark') {
+        theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-theme', theme);
+      if (theme === 'dark') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#000000');
+    })();
+  </script>
+
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,11 +28,12 @@
   <header class="header">
     <h1 class="name"><a href="https://www.linkedin.com/in/roman-lavrynenko/" target="_blank" rel="noopener">ROMAN LAV</a></h1>
     <p class="intro">A small step to know me better.</p>
+    <button class="theme-toggle" type="button" aria-label="Switch to dark theme"></button>
   </header>
 
   <main class="main">
     <section aria-labelledby="albums-title">
-      <h2 id="albums-title">Collection of my favorite sounds :</h2>
+      <h2 id="albums-title" class="albums-heading">Collection of my favorite sounds :</h2>
 
       <!-- Endless carousel: swipe on touch devices, hover over the left or right edge on desktop -->
       <div class="carousel">
@@ -52,7 +67,7 @@
             </article>
           </li>
           <li>
-             <article class="album">
+            <article class="album">
               <button type="button" class="album-cover" data-track="paradise-awaits" data-src="audio/paradise-awaits.mp3" aria-label="Play preview: PARADICE AWAITS">
                 <img src="Paradice Awaits.jpg" alt="paradise-awaits" width="600" height="600">
                 <span class="play-icon" aria-hidden="true"></span>
@@ -142,8 +157,8 @@
       <img src="Loading.svg" alt="" aria-hidden="true">
     </a>
 
-    <div class="manhole-cover">
-      <p class="project">PROJECT "LAV"</p>
+    <div class="footer-credits">
+      <p class="footer-project">PROJECT "LAV"</p>
       <p>&copy; 2026</p>
     </div>
   </footer>

@@ -1,198 +1,304 @@
-// Endless carousel: the album list is repeated 5 times and the scroll position is
-// moved by exactly one list width, so the jump is invisible.
+'use strict';
+
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+
+/* ==========================================================================
+   Theme toggle
+   The starting theme is already set by the small script in <head>.
+   ========================================================================== */
+
+(() => {
+  const root = document.documentElement;
+  const toggle = document.querySelector('.theme-toggle');
+  const themeColor = document.querySelector('meta[name="theme-color"]');
+  const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
+  const STORAGE_KEY = 'theme';
+  if (!toggle) return;
+
+  const currentTheme = () => (root.dataset.theme === 'dark' ? 'dark' : 'light');
+
+  function savedTheme() {
+    try {
+      const value = localStorage.getItem(STORAGE_KEY);
+      return value === 'light' || value === 'dark' ? value : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function saveTheme(theme) {
+    try { localStorage.setItem(STORAGE_KEY, theme); } catch { /* private mode: just don't remember */ }
+  }
+
+  function applyTheme(theme) {
+    root.dataset.theme = theme;
+    toggle.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+    if (themeColor) themeColor.content = getComputedStyle(root).getPropertyValue('--bg').trim();
+  }
+
+  // New theme grows as a circle from the button until it covers the screen
+  function spreadFromButton(theme) {
+    const box = toggle.getBoundingClientRect();
+    const x = box.left + box.width / 2;
+    const y = box.top + box.height / 2;
+    const radius = Math.hypot(
+      Math.max(x, window.innerWidth - x),
+      Math.max(y, window.innerHeight - y)
+    );
+
+    const transition = document.startViewTransition(() => applyTheme(theme));
+    transition.ready
+      .then(() => {
+        root.animate(
+          { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+          { duration: 600, easing: 'cubic-bezier(.4, 0, .2, 1)', pseudoElement: '::view-transition-new(root)' }
+        );
+      })
+      .catch(() => { /* transition skipped: the theme is applied anyway */ });
+  }
+
+  // Fallback for browsers without View Transitions
+  let fadeTimer = 0;
+  function fadeTo(theme) {
+    root.classList.add('theme-fade');
+    applyTheme(theme);
+    clearTimeout(fadeTimer);
+    fadeTimer = setTimeout(() => root.classList.remove('theme-fade'), 400);
+  }
+
+  function switchTheme(theme, fromButton) {
+    if (reduceMotion.matches) applyTheme(theme);
+    else if (fromButton && typeof document.startViewTransition === 'function') spreadFromButton(theme);
+    else fadeTo(theme);
+  }
+
+  toggle.addEventListener('click', () => {
+    const next = currentTheme() === 'dark' ? 'light' : 'dark';
+    saveTheme(next);
+    switchTheme(next, true);
+  });
+
+  // Follow the system setting until the visitor picks a theme
+  systemDark.addEventListener('change', (event) => {
+    if (!savedTheme()) switchTheme(event.matches ? 'dark' : 'light', false);
+  });
+
+  applyTheme(currentTheme());
+})();
+
+
+/* ==========================================================================
+   Carousel and audio previews
+   ========================================================================== */
+
 (() => {
   const scroller = document.querySelector('.albums');
-  const edgeLeft = document.querySelector('.edge-left');
-  const edgeRight = document.querySelector('.edge-right');
-  const heading = document.querySelector('.main h2');
+  const heading = document.querySelector('.albums-heading');
+  const edges = document.querySelectorAll('.edge');
   if (!scroller || !scroller.children.length) return;
 
-  const SETS_EACH_SIDE = 3;
-  const SPEED = 520;      // px per second while hovering an edge
-  const EASE = 0.14;      // seconds to reach full speed or stop
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const SETS_EACH_SIDE = 3; // copies of the list on each side of the real one
+  const SPEED = 520;        // px per second while hovering an edge
+  const EASE = 0.14;        // seconds to reach full speed or to stop
+
+  /* ---- Endless loop -------------------------------------------------------
+     The list is copied on both sides. All copies look identical, so moving the
+     scroll position by exactly one list width (the "period") is invisible.
+     Swipe, trackpad and keyboard scrolling stay fully native. */
 
   const originals = Array.from(scroller.children);
   const count = originals.length;
 
-  const makeSet = () => {
+  function makeCopy() {
     const fragment = document.createDocumentFragment();
     originals.forEach((item) => {
       const clone = item.cloneNode(true);
       clone.setAttribute('aria-hidden', 'true');
-      clone.querySelectorAll('a').forEach((a) => a.setAttribute('tabindex', '-1'));
+      clone.querySelectorAll('a, button').forEach((el) => { el.tabIndex = -1; });
       fragment.append(clone);
     });
     return fragment;
-  };
-  for (let i = 0; i < SETS_EACH_SIDE; i++) {
-    scroller.insertBefore(makeSet(), scroller.firstChild);
-    scroller.append(makeSet());
   }
 
-  let period = 0;   // width of one full album list, with gaps
+  for (let i = 0; i < SETS_EACH_SIDE; i++) {
+    scroller.prepend(makeCopy());
+    scroller.append(makeCopy());
+  }
+
+  const firstReal = originals[0];
+  const firstAfterReal = scroller.children[count * (SETS_EACH_SIDE + 1)];
+
+  let period = 1;   // width of one full list, including gaps
   let home = 0;     // scroll position where the first real album lines up with the heading
-  let progress = 0; // position inside the list, kept across resizes
-  let lastWidth = 0;
+  let place = 0;    // position inside the list (in periods), kept across resizes
 
   function measure() {
-    const first = scroller.children[count * SETS_EACH_SIDE].getBoundingClientRect();
-    const next = scroller.children[count * (SETS_EACH_SIDE + 1)].getBoundingClientRect();
     const box = scroller.getBoundingClientRect();
+    const first = firstReal.getBoundingClientRect();
     const gutter = heading ? heading.getBoundingClientRect().left - box.left : 0;
-    period = Math.round(next.left - first.left);
-    home = first.left - box.left + scroller.scrollLeft - gutter;
+    period = firstAfterReal.getBoundingClientRect().left - first.left;
+    home = scroller.scrollLeft + first.left - box.left - gutter;
   }
 
-  // Move the scroll position back into the middle list. Returns how far it moved.
-  function normalize() {
-    const current = scroller.scrollLeft;
-    let offset = (current - home) % period;
-    if (offset >= period / 2) offset -= period;
-    else if (offset < -period / 2) offset += period;
-    const target = home + offset;
-    if (Math.abs(target - current) < 0.5) return 0;
-    scroller.scrollLeft = target;
-    return target - current;
+  // How far x is from the real list, in whole periods (0 while within one period of home)
+  const wholePeriodsAway = (x) => Math.trunc((x - home) / period) * period;
+
+  // Called when the user has finished scrolling: hop back to the matching spot near the real list
+  function recenter() {
+    if (speed !== 0) return; // edge scrolling keeps itself centered
+    const x = scroller.scrollLeft;
+    const shift = wholePeriodsAway(x);
+    if (shift !== 0) scroller.scrollLeft = x - shift;
   }
 
-  // 60 second previews: one shared audio element, works for the cloned albums too
+  scroller.addEventListener('scroll', () => {
+    place = (scroller.scrollLeft - home) / period;
+  }, { passive: true });
+
+  if ('onscrollend' in window) {
+    scroller.addEventListener('scrollend', recenter);
+  } else {
+    // Older browsers without the scrollend event: wait for scrolling to go quiet
+    let quietTimer = 0;
+    scroller.addEventListener('scroll', () => {
+      clearTimeout(quietTimer);
+      quietTimer = setTimeout(recenter, 150);
+    }, { passive: true });
+  }
+
+  /* ---- Audio previews ----------------------------------------------------
+     One shared audio element. State is painted on the real album and on all its
+     copies, so every copy looks the same (needed for the invisible loop). */
+
   const audio = new Audio();
   audio.preload = 'none';
-  let current = null;
-  let progressRaf = null;
+  let currentTrack = null;
 
-  const coversOf = (key) => scroller.querySelectorAll(`.album-cover[data-track="${key}"]`);
-  const paint = (key, props) => coversOf(key).forEach((c) => {
-    if ('p' in props) c.style.setProperty('--p', props.p);
-    if ('playing' in props) c.classList.toggle('is-playing', props.playing);
-    if ('active' in props) c.classList.toggle('is-active', props.active);
-  });
-  const updateProgress = () => {
-    if (current && audio.duration) paint(current, { p: audio.currentTime / audio.duration });
-    progressRaf = audio.paused ? null : requestAnimationFrame(updateProgress);
-  };
-  const stopPreview = (reset) => {
-    audio.pause();
-    if (current) paint(current, reset ? { playing: false, active: false, p: 0 } : { playing: false });
-  };
+  function paint(track, state) {
+    scroller.querySelectorAll(`.album-cover[data-track="${track}"]`).forEach((cover) => {
+      if ('progress' in state) cover.style.setProperty('--p', state.progress);
+      if ('playing' in state) cover.classList.toggle('is-playing', state.playing);
+      if ('active' in state) cover.classList.toggle('is-active', state.active);
+    });
+  }
 
-  scroller.addEventListener('click', (e) => {
-    const cover = e.target.closest('.album-cover');
+  function resetCurrent() {
+    if (currentTrack) paint(currentTrack, { playing: false, active: false, progress: 0 });
+  }
+
+  scroller.addEventListener('click', (event) => {
+    const cover = event.target.closest('.album-cover');
     if (!cover) return;
-    const key = cover.dataset.track;
-    if (current === key) {
+    const track = cover.dataset.track;
+
+    if (track === currentTrack) {
       if (audio.paused) audio.play().catch(() => {});
       else audio.pause();
       return;
     }
-    stopPreview(true);
-    current = key;
-    audio.src = cover.dataset.src;
-    paint(key, { p: 0, active: true });
-    audio.play().catch(() => stopPreview(true));
-  });
-  audio.addEventListener('play', () => {
-    paint(current, { playing: true, active: true });
-    if (!progressRaf) progressRaf = requestAnimationFrame(updateProgress);
-  });
-  audio.addEventListener('pause', () => { if (current) paint(current, { playing: false }); });
-  audio.addEventListener('ended', () => { if (current) { paint(current, { playing: false, active: false, p: 0 }); current = null; } });
 
-  // Edge hover scrolling, with ease-in and ease-out
-  let targetSpeed = 0;
+    audio.pause();
+    resetCurrent();
+    currentTrack = track;
+    audio.src = cover.dataset.src;
+    paint(track, { progress: 0, active: true });
+    audio.play().catch(resetCurrent);
+  });
+
+  audio.addEventListener('play', () => {
+    paint(currentTrack, { playing: true, active: true });
+    wake();
+  });
+  audio.addEventListener('pause', () => {
+    if (currentTrack) paint(currentTrack, { playing: false });
+  });
+  audio.addEventListener('ended', () => {
+    resetCurrent();
+    currentTrack = null;
+  });
+
+  /* ---- One animation loop -------------------------------------------------
+     Drives edge hover scrolling (with ease-in and ease-out) and the progress bar.
+     It runs only while one of them needs it. */
+
   let speed = 0;
-  let pos = 0;
-  let last = 0;
-  let raf = null;
+  let targetSpeed = 0;
+  let pos = 0;       // exact scroll position while edge scrolling (scrollLeft may be rounded)
+  let lastTime = 0;
+  let frame = 0;
+
+  function wake() {
+    if (frame) return;
+    lastTime = performance.now();
+    pos = scroller.scrollLeft;
+    frame = requestAnimationFrame(tick);
+  }
 
   function tick(now) {
-    const dt = Math.min((now - last) / 1000, 0.05);
-    last = now;
-    speed += (targetSpeed - speed) * (1 - Math.exp(-dt / EASE));
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+    let keepGoing = false;
 
-    if (targetSpeed === 0 && Math.abs(speed) < 2) {
-      speed = 0;
-      raf = null;
-      settle();
-      return;
+    if (targetSpeed !== 0 || speed !== 0) {
+      speed += (targetSpeed - speed) * (1 - Math.exp(-dt / EASE));
+      if (targetSpeed === 0 && Math.abs(speed) < 2) speed = 0;
+
+      if (speed !== 0) {
+        if (Math.abs(scroller.scrollLeft - pos) > 1) pos = scroller.scrollLeft; // user scrolled too
+        pos += speed * dt;
+        pos -= wholePeriodsAway(pos);
+        scroller.scrollLeft = pos;
+        keepGoing = true;
+      }
     }
-    if (Math.abs(scroller.scrollLeft - pos) > 2) pos = scroller.scrollLeft;
-    pos += speed * dt;
-    scroller.scrollLeft = pos;
-    pos += normalize();
-    raf = requestAnimationFrame(tick);
+
+    if (currentTrack && !audio.paused) {
+      if (audio.duration) paint(currentTrack, { progress: audio.currentTime / audio.duration });
+      keepGoing = true;
+    }
+
+    frame = keepGoing ? requestAnimationFrame(tick) : 0;
   }
 
-  function setTarget(direction) {
+  function setTargetSpeed(direction) {
     targetSpeed = direction * SPEED;
-    if (raf === null && direction !== 0) {
-      pos = scroller.scrollLeft;
-      last = performance.now();
-      raf = requestAnimationFrame(tick);
-    }
+    if (direction !== 0) wake();
   }
 
-  // Swipe, trackpad and keyboard scrolling are native. Re-center only when they are done.
-  let touching = false;
-  let idleTimer = null;
+  /* ---- Edge zones: hover to scroll, click or Enter to move one album ---- */
 
-  function settle() {
-    if (touching || raf !== null) return;
-    normalize();
-  }
+  edges.forEach((edge) => {
+    const direction = edge.dataset.direction === 'left' ? -1 : 1;
 
-  function onScroll() {
-    let p = (scroller.scrollLeft - home) / period;
-    progress = p - Math.round(p);
-
-    // Safety net for a very long fling: re-center before reaching the real end
-    const max = scroller.scrollWidth - scroller.clientWidth;
-    if (raf === null && !touching &&
-        (scroller.scrollLeft < period * 0.5 || scroller.scrollLeft > max - period * 0.5)) {
-      normalize();
-    }
-    clearTimeout(idleTimer);
-    idleTimer = setTimeout(settle, 120);
-  }
-
-  scroller.addEventListener('scroll', onScroll, { passive: true });
-  scroller.addEventListener('touchstart', () => { touching = true; }, { passive: true });
-  ['touchend', 'touchcancel'].forEach((name) =>
-    scroller.addEventListener(name, () => {
-      touching = false;
-      clearTimeout(idleTimer);
-      idleTimer = setTimeout(settle, 120);
-    }, { passive: true })
-  );
-
-  [edgeLeft, edgeRight].forEach((edge) => {
-    if (!edge) return;
-    const dir = edge.dataset.direction === 'left' ? -1 : 1;
-    edge.addEventListener('pointerenter', (e) => {
-      if (e.pointerType === 'mouse' && !reduceMotion.matches) setTarget(dir);
+    edge.addEventListener('pointerenter', (event) => {
+      if (event.pointerType === 'mouse' && !reduceMotion.matches) setTargetSpeed(direction);
     });
-    edge.addEventListener('pointerleave', () => setTarget(0));
+    edge.addEventListener('pointerleave', () => setTargetSpeed(0));
     edge.addEventListener('click', () => {
-      setTarget(0);
-      scroller.scrollBy({ left: dir * (period / count), behavior: reduceMotion.matches ? 'auto' : 'smooth' });
+      if (speed !== 0) return; // already moving from hover
+      scroller.scrollBy({
+        left: direction * (period / count),
+        behavior: reduceMotion.matches ? 'auto' : 'smooth',
+      });
     });
   });
 
-  window.addEventListener('blur', () => setTarget(0));
-  document.addEventListener('visibilitychange', () => setTarget(0));
+  window.addEventListener('blur', () => setTargetSpeed(0));
+  document.addEventListener('visibilitychange', () => setTargetSpeed(0));
+  reduceMotion.addEventListener('change', () => setTargetSpeed(0));
 
-  // Start position, and keep the same place when the window is resized
-  measure();
-  scroller.scrollLeft = home;
-  lastWidth = scroller.clientWidth;
+  /* ---- Start position, and keep the same place on resize ----
+     The album size depends on both width and height, so the album itself is observed too. */
 
-  if ('ResizeObserver' in window) {
-    new ResizeObserver(() => {
-      if (scroller.clientWidth === lastWidth) return;
-      lastWidth = scroller.clientWidth;
-      measure();
-      scroller.scrollLeft = home + progress * period;
-    }).observe(scroller);
+  function layout() {
+    measure();
+    scroller.scrollLeft = home + place * period;
+    pos = scroller.scrollLeft;
   }
+
+  layout();
+  const resizeObserver = new ResizeObserver(layout);
+  resizeObserver.observe(scroller);
+  resizeObserver.observe(firstReal);
 })();
