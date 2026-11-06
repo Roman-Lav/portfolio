@@ -302,3 +302,35 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   resizeObserver.observe(scroller);
   resizeObserver.observe(firstReal);
 })();
+
+
+/* ==========================================================================
+   Theme toggle alignment
+   Measures how far below the top of the h1 box the "ROMAN LAV" capitals
+   start (depends on the system font), so the button's top lines up with them.
+   ========================================================================== */
+
+(() => {
+  const name = document.querySelector('.name');
+  if (!name) return;
+
+  function measure() {
+    const style = getComputedStyle(name);
+    const size = parseFloat(style.fontSize);
+    const lineHeight = parseFloat(style.lineHeight) || size;
+    const ctx = document.createElement('canvas').getContext('2d');
+    if (!ctx || !size) return;
+
+    ctx.font = `${style.fontWeight} ${size}px ${style.fontFamily}`;
+    const m = ctx.measureText(name.textContent.trim() || 'R');
+    if (m.fontBoundingBoxAscent === undefined) return; // old browser: keep CSS fallback
+
+    const fontH = m.fontBoundingBoxAscent + m.fontBoundingBoxDescent;
+    const baseline = (lineHeight - fontH) / 2 + m.fontBoundingBoxAscent;
+    const capTop = baseline - m.actualBoundingBoxAscent;
+
+    document.documentElement.style.setProperty('--name-cap-top', (capTop / size).toFixed(4));
+  }
+
+  (document.fonts ? document.fonts.ready : Promise.resolve()).then(measure);
+})();
