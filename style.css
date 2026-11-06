@@ -65,12 +65,15 @@
   --footer-h: clamp(100px, 14vh, 150px);
   --main-pad: calc(var(--glow-into-main) + var(--glow-clear));
 
+  /* Lines reserved for the album title + artist (landscape phones allow up to 4) */
+  --album-text-lines: 2;
+
   /* Height of everything except the album cover:
      name + intro + h2 + album text + main padding + footer (+ small safety margin).
      Used to shrink the covers on short screens so the whole page fits one screen. */
   --chrome-h: calc(
     var(--name-size)
-    + var(--text) * 1.5 * 4
+    + var(--text) * 1.5 * (2 + var(--album-text-lines))
     + 12px + 6px + 14px + 12px
     + var(--main-pad)
     + var(--footer-h)
@@ -469,7 +472,10 @@ a:focus-visible,
 
   font-size: var(--text);
   font-weight: 500;
-  overflow-wrap: anywhere;
+
+  /* Wrap between words; split a word only if it alone is wider than the cover */
+  overflow-wrap: break-word;
+  hyphens: manual;
 }
 
 .album-artist {
@@ -579,6 +585,7 @@ a:focus-visible,
     --space: clamp(8px, 2vh, 16px);
     --album-min: 90px;
     --name-size: clamp(2.5rem, 9vw, 5rem);
+    --album-text-lines: 4;   /* 2 for the title + 2 for the artist, see below */
   }
 
   .intro {
@@ -587,6 +594,16 @@ a:focus-visible,
 
   .albums-heading {
     margin-bottom: 8px;
+  }
+
+  /* Covers are small here: at most 2 lines each, then an ellipsis */
+  .album-title,
+  .album-artist {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
   }
 }
 
