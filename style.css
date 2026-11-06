@@ -1,0 +1,551 @@
+
+/* Reset and base */
+
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  color-scheme: light;
+
+  --bg: #f7f4ef;
+  --ink: #2a2a2a;
+  --muted: #7d7a76;
+
+  --gutter: clamp(16px, 5vw, 64px);
+  --pad-l: max(var(--gutter), env(safe-area-inset-left, 0px));
+  --pad-r: max(var(--gutter), env(safe-area-inset-right, 0px));
+
+  --space: clamp(12px, 2.5vh, 32px);
+
+  /* One text size for header and main (everything except h1) */
+  --text: 1.1rem;
+
+  /* Orange glow: starts at the very bottom, rises through the footer
+     and fades out inside main, --glow-clear px before the album text */
+  --glow-into-main: 45px;
+  --glow-clear: 40px;
+
+  /* Height taken by everything except the album cover (header, titles, footer, glow).
+     Used to shrink the covers on short screens so the whole page fits one screen. */
+  --name-size: clamp(2.5rem, 12vw, 9.5rem);
+  --footer-h: clamp(100px, 14vh, 150px);
+  --main-pad: calc(var(--glow-into-main) + var(--glow-clear));
+
+  /* Computed height of everything except the album cover:
+     name + intro + h2 + album text + main padding + footer (+ small safety margin) */
+  --chrome-h: calc(
+    var(--name-size)
+    + var(--text) * 1.5 * 4
+    + 12px + 6px + 14px + 12px
+    + var(--main-pad)
+    + var(--footer-h)
+    + 8px
+  );
+  --album-min: 140px;
+
+  --album-w: 220px;
+  --gap: 24px;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+
+  margin: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  font-family: system-ui, Arial, sans-serif;
+  line-height: 1.5;
+
+  background-color: var(--bg);
+  color: var(--ink);
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+a:focus-visible,
+.edge:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+
+/* Header */
+
+.header {
+  flex-shrink: 0;
+
+  padding:
+    clamp(4px, 0.75vh, 8px)
+    var(--pad-r)
+    0
+    var(--pad-l);
+
+  text-align: center;
+}
+
+.name {
+  margin: 0;
+
+  font-size: var(--name-size);
+  font-weight: 150;
+  line-height: 1;
+
+  word-spacing: 0.09em;
+
+  /* thin orange shadow under the name */
+  text-shadow: 0 1px 0 rgba(255, 140, 0, .85);
+}
+
+.intro {
+  font-size: var(--text);
+
+  margin: clamp(6px, 1vh, 12px) 0 0;
+
+  color: var(--muted);
+}
+
+
+/* Main */
+
+.main {
+  flex: 1 0 auto;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  padding: var(--space) 0 calc(var(--main-pad) - var(--space));
+}
+
+.main h2 {
+  margin: 0 var(--pad-r) clamp(10px, 1.5vh, 16px) var(--pad-l);
+
+  font-size: var(--text);
+  font-weight: 500;
+}
+
+
+/* Carousel */
+
+.carousel {
+  --fade: clamp(32px, 12vw, 160px);
+
+  position: relative;
+}
+
+.albums {
+  position: relative;
+
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gap);
+
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+
+  scrollbar-width: none;
+
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    rgba(0,0,0,.104) calc(var(--fade) * .2),
+    rgba(0,0,0,.352) calc(var(--fade) * .4),
+    rgba(0,0,0,.648) calc(var(--fade) * .6),
+    rgba(0,0,0,.896) calc(var(--fade) * .8),
+    #000 var(--fade),
+    #000 calc(100% - var(--fade)),
+    rgba(0,0,0,.896) calc(100% - var(--fade) * .8),
+    rgba(0,0,0,.648) calc(100% - var(--fade) * .6),
+    rgba(0,0,0,.352) calc(100% - var(--fade) * .4),
+    rgba(0,0,0,.104) calc(100% - var(--fade) * .2),
+    transparent 100%
+  );
+
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    rgba(0,0,0,.104) calc(var(--fade) * .2),
+    rgba(0,0,0,.352) calc(var(--fade) * .4),
+    rgba(0,0,0,.648) calc(var(--fade) * .6),
+    rgba(0,0,0,.896) calc(var(--fade) * .8),
+    #000 var(--fade),
+    #000 calc(100% - var(--fade)),
+    rgba(0,0,0,.896) calc(100% - var(--fade) * .8),
+    rgba(0,0,0,.648) calc(100% - var(--fade) * .6),
+    rgba(0,0,0,.352) calc(100% - var(--fade) * .4),
+    rgba(0,0,0,.104) calc(100% - var(--fade) * .2),
+    transparent 100%
+  );
+}
+
+.albums::-webkit-scrollbar {
+  display: none;
+}
+
+.albums > li {
+  flex: 0 0 var(--album-w);
+  width: var(--album-w);
+}
+
+
+/* Responsive album sizes: 5-10px smaller than before, and capped by screen height
+   so header + main + footer always fit on one screen */
+
+:root {
+  --album-base: 240px;
+  --album-raw: min(var(--album-base), max(var(--album-min), calc(100dvh - var(--chrome-h))));
+  --album-w: var(--album-raw);
+  --gap: 24px;
+}
+
+/* Whole-pixel album width: the endless carousel repeats the list, and a fractional
+   width would make the loop point shift by a sub-pixel (visible as a small jump). */
+@supports (width: round(down, 10.5px, 1px)) {
+  :root {
+    --album-w: round(down, var(--album-raw), 1px);
+  }
+}
+
+@media (min-width: 600px) {
+  :root {
+    --album-base: 285px;
+    --gap: 28px;
+  }
+}
+
+@media (min-width: 900px) {
+  :root {
+    --album-base: 330px;
+    --gap: 32px;
+  }
+}
+
+@media (min-width: 1200px) {
+  :root {
+    --album-base: 370px;
+    --gap: 32px;
+  }
+}
+
+
+/* Album cover: a button that plays a 60 second preview */
+
+.album-cover {
+  position: relative;
+  display: block;
+
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  appearance: none;
+  overflow: hidden;
+
+  -webkit-tap-highlight-color: transparent;
+}
+
+.album-cover:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* play / pause icon, semi-transparent, same color as header text */
+.play-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+
+  width: clamp(48px, 20%, 76px);
+  aspect-ratio: 1;
+
+  transform: translate(-50%, -50%);
+
+  background-color: rgba(42, 42, 42, .7);
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  mask: var(--icon) center / contain no-repeat;
+
+  --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 4.5v15l13-7.5z'/%3E%3C/svg%3E");
+
+  opacity: 0;
+  transition: opacity .2s ease;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 6px rgba(255, 255, 255, .5));
+}
+
+.album-cover.is-playing .play-icon {
+  --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 4h4v16H6zM14 4h4v16h-4z'/%3E%3C/svg%3E");
+}
+
+.album-cover:hover .play-icon,
+.album-cover:focus-visible .play-icon {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .play-icon { opacity: .85; }
+}
+
+/* thin progress bar along the bottom of the cover */
+.progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2px;
+
+  height: 3px;
+  background: rgba(42, 42, 42, .15);
+
+  opacity: 0;
+  transition: opacity .2s ease;
+}
+
+.progress::after {
+  content: "";
+  display: block;
+  height: 100%;
+  width: calc(var(--p, 0) * 100%);
+  background: rgba(42, 42, 42, .8);
+}
+
+.album-cover.is-active .progress {
+  opacity: 1;
+}
+
+.album-info {
+  display: block;
+}
+
+.album-info:hover .album-title,
+.album-info:hover .album-artist {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.album-cover img {
+  width: 100%;
+
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+
+  background-color: var(--bg);
+
+  transition: opacity 0.2s ease;
+}
+
+.album-cover:hover img {
+  opacity: 0.85;
+}
+
+.album-title {
+  margin: 12px 0 0;
+
+  font-size: var(--text);
+  font-weight: 500;
+
+  overflow-wrap: anywhere;
+}
+
+.album-artist {
+  margin: 0;
+
+  font-size: var(--text);
+  color: var(--muted);
+}
+
+
+/* Invisible hover zones */
+
+.edge {
+  position: absolute;
+
+  top: 0;
+  bottom: 0;
+
+  z-index: 1;
+
+  width: var(--fade);
+
+  padding: 0;
+  border: 0;
+
+  background: none;
+  appearance: none;
+
+  cursor: pointer;
+
+  -webkit-tap-highlight-color: transparent;
+}
+
+.edge-left {
+  left: 0;
+}
+
+.edge-right {
+  right: 0;
+}
+
+@media (hover: none) {
+  .edge {
+    display: none;
+  }
+}
+
+
+/* Landscape phones */
+
+@media (max-height: 500px) and (orientation: landscape) {
+  :root {
+    --space: clamp(8px, 2vh, 16px);
+    --album-min: 90px;
+    --name-size: clamp(2.5rem, 9vw, 5rem);
+  }
+
+
+  .intro {
+    margin-top: 4px;
+  }
+
+  .main h2 {
+    margin-bottom: 8px;
+  }
+}
+
+
+/* Footer */
+
+.footer {
+  position: relative;
+  isolation: isolate;
+
+  flex-shrink: 0;
+
+  /* taller footer, so the glow has room to rise */
+  min-height: var(--footer-h);
+
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+
+  padding:
+    clamp(24px, 4vh, 48px)
+    var(--pad-r)
+    calc(
+      var(--space) * 0.5
+      + env(safe-area-inset-bottom, 0px)
+    )
+    var(--pad-l);
+
+  text-align: end;
+
+  font-size: var(--text);
+  color: var(--bg);
+}
+
+
+/* One continuous orange glow: bottom of page -> footer -> into main -> fades out */
+
+.footer::before {
+  content: "";
+
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  top: calc(var(--glow-into-main) * -1);
+
+  z-index: -1;
+  pointer-events: none;
+
+  background: linear-gradient(
+    to top,
+    rgba(255, 120, 0, .80) 0%,
+    rgba(255, 120, 0, .66) 20%,
+    rgba(255, 120, 0, .48) 40%,
+    rgba(255, 120, 0, .30) 60%,
+    rgba(255, 120, 0, .14) 78%,
+    rgba(255, 120, 0, .04) 92%,
+    rgba(255, 120, 0, 0) 100%
+  );
+}
+
+
+/* Footer animation */
+
+.footer-animation {
+  position: absolute;
+
+  left: var(--pad-l);
+  bottom: 0;
+
+  display: block;
+  width: clamp(100px, 14vw, 150px);
+
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.tap-me {
+  display: block;
+
+  margin: 0 0 2px;
+
+  font-size: 0.6rem;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: none;
+  white-space: nowrap;
+
+  color: var(--bg);
+}
+
+.footer-animation img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.manhole-cover p {
+  margin: 0;
+}
+
+.project {
+  letter-spacing: 0.01em;
+  font-weight: 300;
+}
+
+
+/* Mobile */
+
+@media (max-width: 600px) {
+  :root {
+    --glow-into-main: 36px;
+    --glow-clear: 32px;
+  }
+}
