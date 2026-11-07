@@ -184,14 +184,21 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     place = (scroller.scrollLeft - home) / period;
   }, { passive: true });
 
+  // When scrolling settles: hop back near the real list, and (phones) switch the track
+  // if another album is now in the middle (switchOnSwipe, defined below)
+  const settled = () => {
+    recenter();
+    switchOnSwipe();
+  };
+
   if ('onscrollend' in window) {
-    scroller.addEventListener('scrollend', recenter);
+    scroller.addEventListener('scrollend', settled);
   } else {
     // Older browsers without the scrollend event: wait for scrolling to go quiet
     let quietTimer = 0;
     scroller.addEventListener('scroll', () => {
       clearTimeout(quietTimer);
-      quietTimer = setTimeout(recenter, 150);
+      quietTimer = setTimeout(settled, 150);
     }, { passive: true });
   }
 
@@ -215,35 +222,117 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     if (currentTrack) paint(currentTrack, { playing: false, active: false, progress: 0 });
   }
 
+  const phone = window.matchMedia('(max-width: 600px)');
+
+  // Start this cover's track from the beginning
+  function start(cover) {
+    audio.pause();
+    resetCurrent();
+    currentTrack = cover.dataset.track;
+    audio.src = cover.dataset.src;
+    paint(currentTrack, { progress: 0, active: true });
+    audio.play().catch(resetCurrent);
+  }
+
+  // Same track: pause / resume. Another one: switch to it.
+  function toggle(cover) {
+    if (cover.dataset.track !== currentTrack) {
+      start(cover);
+    } else if (audio.paused) {
+      audio.play().catch(() => {});
+    } else {
+      audio.pause();
+    }
+  }
+
   scroller.addEventListener('click', (event) => {
     const cover = event.target.closest('.album-cover');
     if (!cover) return;
-    const track = cover.dataset.track;
+    // Phones: a tap on the playing track's progress bar seeks (below), it doesn't pause
+    if (phone.matches && event.target.closest('.progress') && cover.dataset.track === currentTrack) return;
+    toggle(cover);
+  });
 
-    if (track === currentTrack) {
-      if (audio.paused) audio.play().catch(() => {});
-      else audio.pause();
-      return;
+  /* ---- Phones: a tiny player ----------------------------------------------
+     The button in the bottom row plays / pauses the album in the middle of the
+     carousel. Swiping to another album while music plays switches the track.
+     The progress bar can be tapped or dragged to jump within the track. */
+
+  const playButton = document.querySelector('.player-toggle');
+
+  // The cover in the middle of the carousel (the real album or one of its copies)
+  function centeredCover() {
+    const box = scroller.getBoundingClientRect();
+    const middle = box.left + box.width / 2;
+    let best = null;
+    let distance = Infinity;
+    for (const item of scroller.children) {
+      const r = item.getBoundingClientRect();
+      const d = Math.abs(r.left + r.width / 2 - middle);
+      if (d < distance) { distance = d; best = item; }
     }
+    return best && best.querySelector('.album-cover');
+  }
 
-    audio.pause();
-    resetCurrent();
-    currentTrack = track;
-    audio.src = cover.dataset.src;
-    paint(track, { progress: 0, active: true });
-    audio.play().catch(resetCurrent);
+  function syncButton() {
+    if (!playButton) return;
+    const playing = Boolean(currentTrack) && !audio.paused;
+    playButton.classList.toggle('is-playing', playing);
+    playButton.setAttribute('aria-label', playing ? 'Pause' : 'Play');
+  }
+
+  if (playButton) {
+    playButton.addEventListener('click', () => {
+      const cover = centeredCover();
+      if (cover) toggle(cover);
+    });
+  }
+
+  function switchOnSwipe() {
+    if (!phone.matches || !currentTrack || audio.paused) return;
+    const cover = centeredCover();
+    if (cover && cover.dataset.track !== currentTrack) start(cover);
+  }
+
+  function seekTo(event, bar) {
+    if (!audio.duration) return;
+    const r = bar.getBoundingClientRect();
+    const ratio = Math.min(1, Math.max(0, (event.clientX - r.left) / r.width));
+    audio.currentTime = ratio * audio.duration;
+    paint(currentTrack, { progress: ratio });
+  }
+
+  scroller.addEventListener('pointerdown', (event) => {
+    const bar = event.target.closest('.progress');
+    if (!bar || !phone.matches) return;
+    if (bar.closest('.album-cover').dataset.track !== currentTrack) return;
+    event.preventDefault();
+    bar.setPointerCapture(event.pointerId);
+    seekTo(event, bar);
+    const move = (e) => seekTo(e, bar);
+    const stop = () => {
+      bar.removeEventListener('pointermove', move);
+      bar.removeEventListener('pointerup', stop);
+      bar.removeEventListener('pointercancel', stop);
+    };
+    bar.addEventListener('pointermove', move);
+    bar.addEventListener('pointerup', stop);
+    bar.addEventListener('pointercancel', stop);
   });
 
   audio.addEventListener('play', () => {
     paint(currentTrack, { playing: true, active: true });
+    syncButton();
     wake();
   });
   audio.addEventListener('pause', () => {
     if (currentTrack) paint(currentTrack, { playing: false });
+    syncButton();
   });
   audio.addEventListener('ended', () => {
     resetCurrent();
     currentTrack = null;
+    syncButton();
   });
 
   /* ---- One animation loop -------------------------------------------------
