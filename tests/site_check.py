@@ -130,8 +130,16 @@ def static_checks(page, name, vp, theme):
 
 # ---------------------------------------------------------------- interactive scenarios
 
+def reveal_theme_toggle(page):
+    """Home page on phones: the theme toggle only shows while the menu is open."""
+    if not page.locator(".theme-toggle").is_visible():
+        page.click(".menu-toggle")
+        page.wait_for_timeout(500)
+
+
 def scenario_theme_toggle(page, name, vp):
     before = page.evaluate("document.documentElement.dataset.theme")
+    reveal_theme_toggle(page)
     page.click(".theme-toggle")
     page.wait_for_timeout(400)
     after = page.evaluate("document.documentElement.dataset.theme")
@@ -144,6 +152,7 @@ def scenario_theme_toggle(page, name, vp):
         page.reload(wait_until="networkidle")
         if page.evaluate("document.documentElement.dataset.theme") != after:
             add("error", name, vp, "-", "theme-toggle", "Chosen theme is lost after reload")
+    reveal_theme_toggle(page)
     page.click(".theme-toggle")   # restore
     page.wait_for_timeout(300)
 
@@ -206,7 +215,8 @@ def scenario_player(page, name, vp):
 
 
 def scenario_game(page, name, vp):
-    if page.locator(".footer-project").count() == 0:
+    # the home page on phones hides the footer credits (no "PROJECT .LAV" to tap there)
+    if page.locator(".footer-project").count() == 0 or not page.locator(".footer-project").is_visible():
         return
     loc = page.locator(".footer-project")
     loc.scroll_into_view_if_needed()

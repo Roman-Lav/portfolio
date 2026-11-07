@@ -885,6 +885,11 @@ html.page-contacts {
     --contact-gap: clamp(.5rem, 1.6vh, 1rem);
   }
 
+  /* The footer starts higher (taller), so the page content is a little shorter */
+  html.page-contacts {
+    --footer-h: calc(clamp(100px, 14vh, 150px) + 2.5rem);
+  }
+
   /* Centered between the header buttons and the footer glow: the same space above the
      photo as below the text */
   .main--contacts {
@@ -1053,19 +1058,19 @@ html.page-contacts {
   }
 }
 
-/* Phones: a photo-gallery pager instead of a free-scrolling strip. One album at a time,
-   edge to edge; a light swipe moves exactly one album and
-   it snaps into the middle. The endless loop (script.js) still works underneath, so there
-   is no first or last page. The swipe from the screen edge (back to the previous page)
-   is the browser's own gesture and keeps working. */
+/* Phones: a photo-gallery pager instead of a free-scrolling strip. One album at a time;
+   a light swipe moves exactly one album and it snaps into the middle. The endless loop
+   (script.js) still works underneath, so there is no first or last page. The swipe from
+   the screen edge (back to the previous page) is the browser's own gesture and keeps working. */
 @media (max-width: 600px) {
   :root {
-    /* as wide as the screen minus the gutters; still shrinks on short screens
-       (--album-raw) so the whole page fits */
-    --album-base: calc(100vw - var(--pad-l) - var(--pad-r));
-    /* the whole screen width: past the album's edges there is only the gap
-       before the next one */
-    --album-w: 100vw;
+    /* Album: 84% of the screen width, smaller on short screens so the page never
+       scrolls (room for the header, heading, title + artist and the footer glow).
+       The gap between albums equals the space left on each side, so the neighbours
+       start exactly at the screen edges and stay out of sight. */
+    --album-w: min(84vw, 100vh - var(--name-size) - 15.5rem);
+    --album-w: min(84vw, 100dvh - var(--name-size) - 15.5rem);
+    --gap: calc((100vw - var(--album-w)) / 2);
   }
 
   .albums {
@@ -1078,22 +1083,64 @@ html.page-contacts {
     scroll-snap-align: center;
     scroll-snap-stop: always;   /* one album per swipe, even a fast one */
   }
+}
 
-  /* Title and artist keep the page gutter, in line with the heading above */
-  .album-info {
-    margin-inline: var(--pad-l) var(--pad-r);
+
+/* Home page on phones: just the header (ROMAN LAV + menu button), the heading, the
+   album with its title and artist, and the orange glow rising from the bottom right up
+   to the artist line. No intro line, no footer animation or credits. One screen, no scrolling. */
+@media (max-width: 600px) {
+  /* "ROMAN LAV" in the top left corner, the theme toggle's spot. The toggle only appears
+     while the menu is open (the name fades out then, see section 5b) */
+  .header:not(.header--bare) {
+    text-align: left;
   }
 
-  /* The edge-to-edge album is tall: less padding around it and the same low footer as
-     on About, so the page still fits the screen */
+  .header:not(.header--bare) .intro {
+    display: none;
+  }
+
+  .header:not(.header--bare) .theme-toggle {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .3s ease, visibility 0s linear .3s, box-shadow .2s ease, transform .2s ease;
+  }
+
+  .menu-open .header:not(.header--bare) .theme-toggle {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity .3s ease, visibility 0s, box-shadow .2s ease, transform .2s ease;
+  }
+
+  /* Content sits a little below the header; the footer takes all the space under it */
   .main:has(.carousel) {
-    padding: clamp(6px, 1.5vh, 16px) 0 calc(var(--glow-into-main) + 8px);
+    flex: 0 0 auto;
+    padding: clamp(20px, 7vh, 80px) 0 12px;
   }
 
+  /* Heading in line with the album's left edge */
+  .main:has(.carousel) .albums-heading {
+    margin-inline: var(--gap);
+  }
+
+  /* Footer: only the glow, starting right under the artist line */
   .main:has(.carousel) ~ .footer {
-    --glow-into-main: 10px;
-    min-height: 72px;
-    padding-top: 10px;
+    --glow-into-main: 12px;
+    flex: 1 0 auto;
+    min-height: 3.5rem;
+    padding: 0;
+  }
+
+  .main:has(.carousel) ~ .footer .footer-animation,
+  .main:has(.carousel) ~ .footer .footer-credits {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) and (prefers-reduced-motion: reduce) {
+  .header:not(.header--bare) .theme-toggle,
+  .menu-open .header:not(.header--bare) .theme-toggle {
+    transition: none;
   }
 }
 
