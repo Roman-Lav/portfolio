@@ -155,11 +155,12 @@
   // Any click, anywhere (links, buttons, text, header, footer, the open menu, the theme
   // toggle): lightning hits right where you clicked. Except an album cover, which gets its
   // own bolt from the header (section 6), the STORM game, which has its own lightning,
-  // and the enlarged photo on Contacts (a bolt would only flicker behind its dark backdrop).
+  // the enlarged photo on Contacts (a bolt would only flicker behind its dark backdrop),
+  // and the Vox stickers (dropping one after a drag would fire a bolt every time).
   // Capture phase, so a handler that stops the click can't swallow the strike.
   document.addEventListener('click', (event) => {
     const el = event.target instanceof Element ? event.target : null;
-    if (el && el.closest('.album-cover, .game, .photo-viewer')) return;
+    if (el && el.closest('.album-cover, .game, .photo-viewer, .sticker')) return;
     let x = event.clientX;
     let y = event.clientY;
     // Pressed with Enter/Space (no pointer position): strike the middle of that element

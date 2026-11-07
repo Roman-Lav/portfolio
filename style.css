@@ -1229,6 +1229,70 @@ html.page-contacts {
   }
 }
 
+/* Vox: stickers of the gear, spread over the corners of main. Drag one and it stays
+   where it's dropped (script.js). Position from the custom properties: --x / --y run
+   from 0 to 1 across the free space (left: x of the width, pulled back by x of its own
+   width, so 0 and 1 are the exact edges), --tilt is the crooked angle. A white outline
+   and a soft shadow make the cut-outs look stuck on; picked up, it lifts. */
+.main--vox {
+  position: relative;
+}
+
+.stickers {
+  position: absolute;
+  inset: clamp(.5rem, 2vh, 1.5rem) var(--pad-r) clamp(.5rem, 2vh, 1.5rem) var(--pad-l);
+}
+
+.sticker {
+  position: absolute;
+  left: calc(var(--x) * 100%);
+  top: calc(var(--y) * 100%);
+  width: clamp(6rem, 17vw, 13rem);
+  height: auto;
+
+  transform:
+    translate(calc(var(--x) * -100%), calc(var(--y) * -100%))
+    rotate(var(--tilt, 0deg))
+    scale(var(--lift, 1));
+  filter:
+    drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px #fff) drop-shadow(0 0 1.5px #fff)
+    drop-shadow(0 .25rem .5rem rgba(0, 0, 0, var(--shadow, .18)));
+
+  cursor: grab;
+  touch-action: none;   /* a finger drags the sticker instead of scrolling the page */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  transition: transform .18s ease, filter .18s ease;
+}
+
+.sticker:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 6px;
+}
+
+.sticker.is-dragging {
+  --lift: 1.06;
+  --shadow: .32;
+  cursor: grabbing;
+  transition: filter .18s ease;   /* the position follows the pointer instantly */
+}
+
+@media (max-width: 600px) {
+  .sticker {
+    width: clamp(5rem, 30vw, 8rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sticker,
+  .sticker.is-dragging {
+    transition: none;
+  }
+}
+
+
 /* ==========================================================================
    7. Carousel
    ========================================================================== */

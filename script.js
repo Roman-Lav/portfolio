@@ -844,3 +844,80 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   window.addEventListener('resize', size);
   if (document.fonts) document.fonts.ready.then(size);
 })();
+
+
+
+/* ==========================================================================
+   Vox: stickers you can peel off and stick somewhere else
+   Drag with a mouse or a finger; the sticker stays where it's dropped and the spot is
+   remembered in this browser (localStorage, positions as 0..1 of the free space, so
+   they survive any screen size). Arrow keys nudge a focused sticker.
+   ========================================================================== */
+
+(() => {
+  const area = document.querySelector('.stickers');
+  if (!area) return;
+  const stickers = Array.from(area.querySelectorAll('.sticker'));
+  const KEY = 'vox-stickers';
+  let top = stickers.length;   // z-index of the sticker picked up last
+
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(KEY)) || {}; } catch { saved = {}; }
+
+  const clamp = (v) => Math.min(1, Math.max(0, v));
+  const get = (el, name) => parseFloat(el.style.getPropertyValue(name)) || 0;
+
+  function place(el, x, y) {
+    el.style.setProperty('--x', clamp(x).toFixed(4));
+    el.style.setProperty('--y', clamp(y).toFixed(4));
+  }
+
+  function save() {
+    const spots = {};
+    stickers.forEach((el) => { spots[el.dataset.id] = [get(el, '--x'), get(el, '--y')]; });
+    try { localStorage.setItem(KEY, JSON.stringify(spots)); } catch { /* private mode: just don't remember */ }
+  }
+
+  stickers.forEach((el, i) => {
+    el.style.zIndex = i + 1;
+    const spot = saved[el.dataset.id];
+    if (Array.isArray(spot)) place(el, spot[0], spot[1]);
+
+    el.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      el.setPointerCapture(event.pointerId);
+      el.classList.add('is-dragging');
+      el.style.zIndex = ++top;
+
+      const box = area.getBoundingClientRect();
+      const freeW = Math.max(1, box.width - el.offsetWidth);
+      const freeH = Math.max(1, box.height - el.offsetHeight);
+      const startX = get(el, '--x');
+      const startY = get(el, '--y');
+      const fromX = event.clientX;
+      const fromY = event.clientY;
+
+      const move = (e) => place(el, startX + (e.clientX - fromX) / freeW, startY + (e.clientY - fromY) / freeH);
+      const drop = () => {
+        el.classList.remove('is-dragging');
+        el.removeEventListener('pointermove', move);
+        el.removeEventListener('pointerup', drop);
+        el.removeEventListener('pointercancel', drop);
+        save();
+      };
+      el.addEventListener('pointermove', move);
+      el.addEventListener('pointerup', drop);
+      el.addEventListener('pointercancel', drop);
+    });
+
+    el.addEventListener('keydown', (event) => {
+      const steps = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[event.key];
+      if (!steps) return;
+      event.preventDefault();
+      el.style.zIndex = ++top;
+      place(el, get(el, '--x') + steps[0] * 0.02, get(el, '--y') + steps[1] * 0.02);
+      save();
+    });
+  });
+})();
