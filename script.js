@@ -367,6 +367,7 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   if (!button || !menu) return;
 
   function setOpen(open) {
+    if (open) fitWidth();   // measured while closed: the page content is in its final place by now
     root.classList.toggle('menu-open', open);
     menu.inert = !open;
     button.setAttribute('aria-expanded', String(open));
@@ -376,12 +377,27 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   const isOpen = () => root.classList.contains('menu-open');
 
-  // The glow ends right under "A small step to know me better." = bottom of the header
-  // (inner pages: the bare header is just as tall)
+  // Home page: the glow ends right under "A small step to know me better." = bottom of the header.
+  // Inner pages (About, Vox, Contacts): it only covers the line with the buttons and the links,
+  // plus the same inset the About text keeps (clamp 16–48px, as in the About text code below),
+  // and never reaches the page content. Text size and positions stay the same, only the
+  // panel's bottom edge moves up.
   const header = document.querySelector('.header');
+  const links = menu.querySelector('.menu-links');
   function fitWidth() {
     if (!header) return;
-    root.style.setProperty('--menu-h', `${Math.round(header.getBoundingClientRect().bottom + window.scrollY)}px`);
+    let bottom = header.getBoundingClientRect().bottom;
+
+    if (header.classList.contains('header--bare')) {
+      const box = button.getBoundingClientRect();
+      const lineBottom = Math.max(box.bottom, box.top + box.height / 2 + (links ? links.offsetHeight / 2 : 0));
+      const inset = Math.min(48, Math.max(16, window.innerWidth * 0.03));
+      bottom = Math.min(bottom, lineBottom + inset);
+      const content = document.querySelector('.main > :not(.visually-hidden)');
+      if (content) bottom = Math.min(bottom, Math.max(lineBottom, content.getBoundingClientRect().top));
+    }
+
+    root.style.setProperty('--menu-h', `${Math.round(bottom + window.scrollY)}px`);
   }
 
   fitWidth();
@@ -445,4 +461,131 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   window.addEventListener('pageshow', (event) => {
     if (event.persisted) root.classList.remove('page-leaving');
   });
+})();
+
+
+/* ==========================================================================
+   About text: fill the free rectangle
+   Rectangle: from the bottom of the menu button / theme toggle down to the top of
+   the footer animation / "PROJECT .LAV · © 2026", from the menu button's left edge
+   to the theme toggle's right edge. Inside it, an even inset; the text gets the
+   largest font size that still fits and is centered vertically.
+   Positions come from offsetTop/offsetLeft, which ignore transforms, so the
+   page fade-in animation can't throw the measurement off.
+   ========================================================================== */
+
+(() => {
+  const text = document.querySelector('.about-text');
+  const main = text && text.closest('.main');
+  const menuButton = document.querySelector('.menu-toggle');
+  const themeButton = document.querySelector('.theme-toggle');
+  const footerParts = document.querySelectorAll('.footer-animation, .tap-me, .footer-credits');
+  if (!text || !main || !menuButton || !themeButton || !footerParts.length) return;
+
+  // Element's top-left corner in page coordinates
+  function pageOffset(el) {
+    let x = 0;
+    let y = 0;
+    for (let node = el; node; node = node.offsetParent) {
+      x += node.offsetLeft;
+      y += node.offsetTop;
+    }
+    return { x, y };
+  }
+
+  function edges(el) {
+    const { x, y } = pageOffset(el);
+    return { left: x, top: y, right: x + el.offsetWidth, bottom: y + el.offsetHeight };
+  }
+
+  // Gap between lines = gap between words. Measured on the real font at 100px:
+  // the line box is the capitals' height + the depth of g/y/p + one space, so the
+  // white strip between two lines is exactly one space wide. A ratio, so it holds
+  // at any font size the fitting below picks.
+  function evenRhythm() {
+    const style = getComputedStyle(text);
+    const ctx = document.createElement('canvas').getContext('2d');
+    if (!ctx) return;
+    ctx.font = `${style.fontWeight} 100px ${style.fontFamily}`;
+    const caps = ctx.measureText('HIEBDT');
+    const tails = ctx.measureText('gjpqy,');
+    if (caps.actualBoundingBoxAscent === undefined) return;   // old browser: CSS fallback
+    // base word gap = the space itself + word-spacing from style.css (in em, so ×100 here)
+    const extra = (parseFloat(style.wordSpacing) || 0) / (parseFloat(style.fontSize) || 1) * 100;
+    const space = ctx.measureText(' ').width + extra;
+    const lineHeight = (caps.actualBoundingBoxAscent + tails.actualBoundingBoxDescent + space) / 100;
+    if (lineHeight > 0.8 && lineHeight < 2) text.style.lineHeight = lineHeight.toFixed(4);
+  }
+
+  // How much of the width the last line before "waves of music." fills, without stretching
+  const endPart = text.querySelector('.about-text-end');
+  function lineBeforeEndFill(width) {
+    const lead = text.firstChild;
+    if (!endPart || !lead || lead.nodeType !== Node.TEXT_NODE) return 1;
+    text.classList.add('is-measuring');
+    const range = document.createRange();
+    range.setStart(lead, 0);
+    range.setEnd(lead, lead.textContent.trimEnd().length);
+    const rects = Array.from(range.getClientRects());
+    text.classList.remove('is-measuring');
+    if (!rects.length) return 1;
+    const bottom = Math.max(...rects.map((r) => r.bottom));
+    const line = rects.filter((r) => r.bottom > bottom - 2);
+    const left = Math.min(...line.map((r) => r.left));
+    const right = Math.max(...line.map((r) => r.right));
+    return (right - left) / width;
+  }
+
+  function fit() {
+    if (document.documentElement.classList.contains('menu-open')) return; // the menu button is fixed then
+    const menu = edges(menuButton);
+    const theme = edges(themeButton);
+    const footerTop = Math.min(...Array.from(footerParts, (el) => el.getBoundingClientRect().top + window.scrollY));
+
+    const inset = Math.min(48, Math.max(16, window.innerWidth * 0.03));
+    const box = {
+      x: menu.left + inset,
+      y: Math.max(menu.bottom, theme.bottom) + inset,
+      w: theme.right - menu.left - inset * 2,
+      h: footerTop - Math.max(menu.bottom, theme.bottom) - inset * 2,
+    };
+    if (box.w < 80 || box.h < 40) {   // no room (e.g. a phone on its side): back to a plain paragraph
+      text.classList.remove('is-fitted');
+      text.style.cssText = '';
+      return;
+    }
+
+    text.classList.add('is-fitted');
+    text.style.width = `${box.w}px`;
+    evenRhythm();
+
+    // Largest font size at which the text fits: binary search, to a tenth of a pixel
+    let low = 8;
+    let high = Math.min(box.h, 400);
+    while (high - low > 0.1) {
+      const mid = (low + high) / 2;
+      text.style.fontSize = `${mid}px`;
+      if (text.scrollHeight <= box.h && text.scrollWidth <= box.w + 1) low = mid;
+      else high = mid;
+    }
+    text.style.fontSize = `${low}px`;
+
+    // The line right before "waves of music." is stretched edge to edge too. If it holds
+    // only a word or two, that leaves huge holes: step the size down a little until the
+    // words wrap so that line is at least ~70% full on its own.
+    let size = low;
+    for (let step = 0; step < 40 && lineBeforeEndFill(box.w) < 0.7; step++) {
+      size *= 0.99;
+      text.style.fontSize = `${size}px`;
+    }
+
+    const origin = pageOffset(main);
+    text.style.left = `${box.x - origin.x}px`;
+    text.style.top = `${box.y - origin.y + (box.h - text.offsetHeight) / 2}px`;
+  }
+
+  fit();
+  window.addEventListener('resize', fit);
+  if (document.fonts) document.fonts.ready.then(fit);
+  new ResizeObserver(fit).observe(main);
 })();

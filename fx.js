@@ -82,8 +82,6 @@
       branches,
       born: performance.now(),
       flicker: Math.random() < 0.6,
-      rgb: cssVar('--storm-rgb') || '42, 42, 42',
-      alpha: parseFloat(cssVar('--storm-alpha')) || 0.15,
     };
   }
 
@@ -110,12 +108,17 @@
     ctx.clearRect(0, 0, width, height);
     strikes = strikes.filter((s) => now - s.born < LIFE);
 
+    // Read every frame, not once per strike: a click on the theme toggle switches the
+    // colors while its own bolt is still on screen
+    const stormRgb = cssVar('--storm-rgb') || '42, 42, 42';
+    const stormAlpha = parseFloat(cssVar('--storm-alpha')) || 0.15;
+
     for (const s of strikes) {
-      const a = envelope(s, now - s.born) * s.alpha;
-      const color = `rgba(${s.rgb}, ${a.toFixed(3)})`;
+      const a = envelope(s, now - s.born) * stormAlpha;
+      const color = `rgba(${stormRgb}, ${a.toFixed(3)})`;
 
       // the whole sky lights up a little
-      ctx.fillStyle = `rgba(${s.rgb}, ${(a * 0.12).toFixed(3)})`;
+      ctx.fillStyle = `rgba(${stormRgb}, ${(a * 0.12).toFixed(3)})`;
       ctx.fillRect(0, 0, width, height);
 
       ctx.strokeStyle = color;
@@ -149,12 +152,23 @@
   setTimeout(() => strike(), 1200);
   schedule();
 
-  // Click on empty space: lightning hits right there
+  // Any click, anywhere (links, buttons, text, header, footer, the open menu, the theme
+  // toggle): lightning hits right where you clicked. Except an album cover, which gets its
+  // own bolt from the header (section 6), and the STORM game, which has its own lightning.
+  // Capture phase, so a handler that stops the click can't swallow the strike.
   document.addEventListener('click', (event) => {
-    if (event.target.closest('a, button, input, .menu, .game, .album, .footer')) return;
-    if (root.classList.contains('menu-open')) return;
-    strike(event.clientX, event.clientY);
-  });
+    const el = event.target instanceof Element ? event.target : null;
+    if (el && el.closest('.album-cover, .game')) return;
+    let x = event.clientX;
+    let y = event.clientY;
+    // Pressed with Enter/Space (no pointer position): strike the middle of that element
+    if (event.detail === 0 && el) {
+      const box = el.getBoundingClientRect();
+      x = box.left + box.width / 2;
+      y = box.top + box.height / 2;
+    }
+    strike(x, y);
+  }, true);
 
   window.fxStrike = strike; // used by the console greeting below
 
