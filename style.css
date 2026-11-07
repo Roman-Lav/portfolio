@@ -1229,25 +1229,39 @@ html.page-contacts {
   }
 }
 
-/* Vox: stickers of the gear, spread over the corners of main. Drag one and it stays
-   where it's dropped (script.js). Position from the custom properties: --x / --y run
-   from 0 to 1 across the free space (left: x of the width, pulled back by x of its own
-   width, so 0 and 1 are the exact edges), --tilt is the crooked angle. A white outline
-   and a soft shadow make the cut-outs look stuck on; picked up, it lifts. */
-.main--vox {
-  position: relative;
+/* Vox: stickers of the gear, lying on the whole screen like icons on a desktop (under
+   the header buttons, the menu and the footer links, which stay clickable). Drag one and
+   it stays where it's dropped; throw it and it slides and bounces off the others and the
+   edges (script.js). Position from the custom properties: --x / --y run from 0 to 1
+   across the free space (left: x of the width, pulled back by x of its own width, so 0
+   and 1 are the exact edges), --tilt is the crooked angle. A white outline and a soft
+   shadow make the cut-outs look stuck on; picked up, it lifts. */
+/* The rows with the buttons, the credits and "*Tap Me" stay free: the stickers lie
+   between the header buttons and the footer's links */
+.stickers {
+  position: fixed;
+  top: calc(var(--btn-top) + var(--btn-size) + .75rem);
+  right: var(--pad-r);
+  bottom: clamp(4.5rem, 9vh, 6rem);
+  left: var(--pad-l);
+  z-index: 1;
+  pointer-events: none;   /* only the stickers themselves catch the pointer */
 }
 
-.stickers {
-  position: absolute;
-  inset: clamp(.5rem, 2vh, 1.5rem) var(--pad-r) clamp(.5rem, 2vh, 1.5rem) var(--pad-l);
+/* Phones (credits on top, buttons at the bottom, section 5d) */
+@media (max-width: 600px), (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
+  .stickers {
+    top: calc(var(--top-band) + .5rem);
+    bottom: calc(var(--btn-bottom) + var(--btn-size) + .75rem);
+  }
 }
 
 .sticker {
   position: absolute;
   left: calc(var(--x) * 100%);
   top: calc(var(--y) * 100%);
-  width: clamp(6rem, 17vw, 13rem);
+  /* twice the old size, but never so big that six don't fit on a short screen */
+  width: min(clamp(12rem, 30vw, 26rem), 46vh);
   height: auto;
 
   transform:
@@ -1258,13 +1272,14 @@ html.page-contacts {
     drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px #fff) drop-shadow(0 0 1.5px #fff)
     drop-shadow(0 .25rem .5rem rgba(0, 0, 0, var(--shadow, .18)));
 
+  pointer-events: auto;
   cursor: grab;
   touch-action: none;   /* a finger drags the sticker instead of scrolling the page */
   -webkit-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
-  transition: transform .18s ease, filter .18s ease;
+  transition: filter .18s ease;
 }
 
 .sticker:focus-visible {
@@ -1276,18 +1291,24 @@ html.page-contacts {
   --lift: 1.06;
   --shadow: .32;
   cursor: grabbing;
-  transition: filter .18s ease;   /* the position follows the pointer instantly */
 }
 
+/* Phones: one and a half times the old size (twice would not fit six on the screen) */
 @media (max-width: 600px) {
   .sticker {
-    width: clamp(5rem, 30vw, 8rem);
+    width: clamp(7rem, 44vw, 11rem);
+  }
+}
+
+/* Phones held sideways: the screen is short */
+@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
+  .sticker {
+    width: clamp(6rem, 18vw, 10rem);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sticker,
-  .sticker.is-dragging {
+  .sticker {
     transition: none;
   }
 }

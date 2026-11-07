@@ -848,76 +848,252 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
 
 /* ==========================================================================
-   Vox: stickers you can peel off and stick somewhere else
-   Drag with a mouse or a finger; the sticker stays where it's dropped and the spot is
-   remembered in this browser (localStorage, positions as 0..1 of the free space, so
-   they survive any screen size). Arrow keys nudge a focused sticker.
+   Vox: stickers you can peel off, stick somewhere else, and throw
+   Drag with a mouse or a finger: the sticker follows, pushes the others out of the way
+   and stays where it's dropped. Let go while moving and it slides on, slowing down,
+   bouncing off the other stickers and the screen edges. Overlaps are sorted out on load
+   and on resize. Positions are remembered in this browser (localStorage, as 0..1 of the
+   free space, so they survive any screen size). Arrow keys nudge a focused sticker.
    ========================================================================== */
 
 (() => {
   const area = document.querySelector('.stickers');
   if (!area) return;
-  const stickers = Array.from(area.querySelectorAll('.sticker'));
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const KEY = 'vox-stickers';
-  let top = stickers.length;   // z-index of the sticker picked up last
+  const FRICTION = 0.92;   // speed kept per frame while sliding
+  const BOUNCE = 0.55;     // speed kept after hitting something
+  const INSET = 0.07;      // the cut-outs have transparent margins: collide a bit inside the box
+  let zTop = 0;
 
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(KEY)) || {}; } catch { saved = {}; }
 
-  const clamp = (v) => Math.min(1, Math.max(0, v));
-  const get = (el, name) => parseFloat(el.style.getPropertyValue(name)) || 0;
+  const items = Array.from(area.querySelectorAll('.sticker')).map((el) => {
+    const spot = saved[el.dataset.id];
+    const fx = Array.isArray(spot) ? spot[0] : parseFloat(el.style.getPropertyValue('--x')) || 0;
+    const fy = Array.isArray(spot) ? spot[1] : parseFloat(el.style.getPropertyValue('--y')) || 0;
+    el.style.zIndex = ++zTop;
+    return { el, fx, fy, x: 0, y: 0, w: 0, h: 0, vx: 0, vy: 0, drag: false };
+  });
 
-  function place(el, x, y) {
-    el.style.setProperty('--x', clamp(x).toFixed(4));
-    el.style.setProperty('--y', clamp(y).toFixed(4));
+  let W = 0;
+  let H = 0;
+  const clamp01 = (v) => Math.min(1, Math.max(0, v));
+
+  // Sizes in pixels, positions from the stored fractions
+  function measure() {
+    const box = area.getBoundingClientRect();
+    W = box.width;
+    H = box.height;
+    for (const it of items) {
+      it.w = it.el.offsetWidth;
+      it.h = it.el.offsetHeight;
+      it.x = it.fx * Math.max(0, W - it.w);
+      it.y = it.fy * Math.max(0, H - it.h);
+    }
+  }
+
+  function render() {
+    for (const it of items) {
+      it.fx = W > it.w ? clamp01(it.x / (W - it.w)) : 0;
+      it.fy = H > it.h ? clamp01(it.y / (H - it.h)) : 0;
+      it.el.style.setProperty('--x', it.fx.toFixed(4));
+      it.el.style.setProperty('--y', it.fy.toFixed(4));
+    }
   }
 
   function save() {
     const spots = {};
-    stickers.forEach((el) => { spots[el.dataset.id] = [get(el, '--x'), get(el, '--y')]; });
+    for (const it of items) spots[it.el.dataset.id] = [+it.fx.toFixed(4), +it.fy.toFixed(4)];
     try { localStorage.setItem(KEY, JSON.stringify(spots)); } catch { /* private mode: just don't remember */ }
   }
 
-  stickers.forEach((el, i) => {
-    el.style.zIndex = i + 1;
-    const spot = saved[el.dataset.id];
-    if (Array.isArray(spot)) place(el, spot[0], spot[1]);
+  // Equal masses; a sticker held in the hand counts as immovable (it pushes, it isn't pushed)
+  function exchange(a, b, axis) {
+    const va = a[axis];
+    const vb = b[axis];
+    if (a.drag) b[axis] = va + BOUNCE * (va - vb);
+    else if (b.drag) a[axis] = vb + BOUNCE * (vb - va);
+    else {
+      const mid = (va + vb) / 2;
+      a[axis] = mid - (BOUNCE * (va - vb)) / 2;
+      b[axis] = mid + (BOUNCE * (va - vb)) / 2;
+    }
+  }
 
-    el.addEventListener('pointerdown', (event) => {
+  function walls(it) {
+    const maxX = Math.max(0, W - it.w);
+    const maxY = Math.max(0, H - it.h);
+    if (it.x < 0) { it.x = 0; if (it.vx < 0) it.vx = -it.vx * BOUNCE; }
+    if (it.x > maxX) { it.x = maxX; if (it.vx > 0) it.vx = -it.vx * BOUNCE; }
+    if (it.y < 0) { it.y = 0; if (it.vy < 0) it.vy = -it.vy * BOUNCE; }
+    if (it.y > maxY) { it.y = maxY; if (it.vy > 0) it.vy = -it.vy * BOUNCE; }
+  }
+
+  // Push overlapping stickers apart along the shorter overlap, and bounce their speeds
+  function collide(passes) {
+    for (let pass = 0; pass < passes; pass++) {
+      let touched = false;
+      for (let i = 0; i < items.length; i++) {
+        for (let j = i + 1; j < items.length; j++) {
+          const a = items[i];
+          const b = items[j];
+          const ax = a.w * INSET, ay = a.h * INSET, bx = b.w * INSET, by = b.h * INSET;
+          const ox = Math.min(a.x + a.w - ax, b.x + b.w - bx) - Math.max(a.x + ax, b.x + bx);
+          const oy = Math.min(a.y + a.h - ay, b.y + b.h - by) - Math.max(a.y + ay, b.y + by);
+          if (ox <= 0 || oy <= 0) continue;
+          touched = true;
+          const shareA = a.drag ? 0 : b.drag ? 1 : 0.5;
+          const shareB = 1 - shareA;
+          if (ox < oy) {
+            const dir = a.x + a.w / 2 < b.x + b.w / 2 ? -1 : 1;   // a is left of b: a goes left
+            a.x += dir * ox * shareA;
+            b.x -= dir * ox * shareB;
+            if ((a.vx - b.vx) * dir < 0) exchange(a, b, 'vx');
+          } else {
+            const dir = a.y + a.h / 2 < b.y + b.h / 2 ? -1 : 1;
+            a.y += dir * oy * shareA;
+            b.y -= dir * oy * shareB;
+            if ((a.vy - b.vy) * dir < 0) exchange(a, b, 'vy');
+          }
+        }
+      }
+      items.forEach(walls);
+      if (!touched) break;
+    }
+  }
+
+  const box = (it, x = it.x, y = it.y) => [x + it.w * INSET, y + it.h * INSET, x + it.w * (1 - INSET), y + it.h * (1 - INSET)];
+  const overlap = (p, q) => Math.max(0, Math.min(p[2], q[2]) - Math.max(p[0], q[0])) * Math.max(0, Math.min(p[3], q[3]) - Math.max(p[1], q[1]));
+
+  // Every sticker that lies on one placed before it moves to the nearest free spot
+  // (a grid search around where it was). Used on load, on resize, and when a throw
+  // comes to rest against the others: pushing in pairs alone can get stuck.
+  function unstack() {
+    const placed = [];
+    const order = items.slice().sort((a, b) => (a.drag ? -1 : 0) - (b.drag ? -1 : 0));
+    for (const it of order) {
+      const hits = (x, y) => placed.reduce((sum, p) => sum + overlap(box(it, x, y), box(p)), 0);
+      if (hits(it.x, it.y) > 0) {
+        const maxX = Math.max(0, W - it.w);
+        const maxY = Math.max(0, H - it.h);
+        const stepPx = Math.max(8, Math.min(W, H) / 60);
+        let best = null;
+        for (let y = 0; y <= maxY + 0.5; y += stepPx) {
+          for (let x = 0; x <= maxX + 0.5; x += stepPx) {
+            const cx = Math.min(x, maxX);
+            const cy = Math.min(y, maxY);
+            const cost = hits(cx, cy) * 1e6 + (cx - it.x) ** 2 + (cy - it.y) ** 2;
+            if (!best || cost < best.cost) best = { cost, cx, cy };
+          }
+        }
+        if (best) { it.x = best.cx; it.y = best.cy; }
+      }
+      placed.push(it);
+    }
+  }
+
+  // Sort out overlaps without animation (on load, on resize)
+  function settle() {
+    measure();
+    unstack();
+    render();
+  }
+
+  let frame = 0;
+  let last = 0;
+  function step(now) {
+    const dt = Math.min(2, (now - last) / 16.67);
+    last = now;
+    let moving = false;
+    for (const it of items) {
+      if (it.drag) continue;
+      if (Math.abs(it.vx) + Math.abs(it.vy) < 0.05) { it.vx = 0; it.vy = 0; continue; }
+      it.x += it.vx * dt;
+      it.y += it.vy * dt;
+      const keep = Math.pow(FRICTION, dt);
+      it.vx *= keep;
+      it.vy *= keep;
+      moving = true;
+    }
+    collide(4);
+    if (moving || items.some((it) => it.drag)) {
+      render();
+      frame = requestAnimationFrame(step);
+    } else {
+      unstack();   // came to rest pressed against the others: tidy up
+      render();
+      frame = 0;
+      save();
+    }
+  }
+
+  function wake() {
+    if (frame) return;
+    last = performance.now();
+    frame = requestAnimationFrame(step);
+  }
+
+  for (const it of items) {
+    it.el.addEventListener('pointerdown', (event) => {
       if (event.button !== 0) return;
       event.preventDefault();
-      el.setPointerCapture(event.pointerId);
-      el.classList.add('is-dragging');
-      el.style.zIndex = ++top;
+      it.el.setPointerCapture(event.pointerId);
+      it.el.classList.add('is-dragging');
+      it.el.style.zIndex = ++zTop;
+      it.drag = true;
+      it.vx = 0;
+      it.vy = 0;
 
       const box = area.getBoundingClientRect();
-      const freeW = Math.max(1, box.width - el.offsetWidth);
-      const freeH = Math.max(1, box.height - el.offsetHeight);
-      const startX = get(el, '--x');
-      const startY = get(el, '--y');
-      const fromX = event.clientX;
-      const fromY = event.clientY;
+      const offX = event.clientX - box.left - it.x;
+      const offY = event.clientY - box.top - it.y;
+      let lastT = performance.now();
 
-      const move = (e) => place(el, startX + (e.clientX - fromX) / freeW, startY + (e.clientY - fromY) / freeH);
-      const drop = () => {
-        el.classList.remove('is-dragging');
-        el.removeEventListener('pointermove', move);
-        el.removeEventListener('pointerup', drop);
-        el.removeEventListener('pointercancel', drop);
-        save();
+      const move = (e) => {
+        const now = performance.now();
+        const frames = Math.max(0.5, (now - lastT) / 16.67);
+        lastT = now;
+        const nx = e.clientX - box.left - offX;
+        const ny = e.clientY - box.top - offY;
+        // speed in px per frame, smoothed, for the throw and for the hits
+        it.vx = it.vx * 0.5 + ((nx - it.x) / frames) * 0.5;
+        it.vy = it.vy * 0.5 + ((ny - it.y) / frames) * 0.5;
+        it.x = nx;
+        it.y = ny;
+        wake();
       };
-      el.addEventListener('pointermove', move);
-      el.addEventListener('pointerup', drop);
-      el.addEventListener('pointercancel', drop);
+      const drop = () => {
+        it.drag = false;
+        it.el.classList.remove('is-dragging');
+        // a pause before letting go means no throw; reduced motion: never
+        if (reduceMotion.matches || performance.now() - lastT > 80) { it.vx = 0; it.vy = 0; }
+        it.el.removeEventListener('pointermove', move);
+        it.el.removeEventListener('pointerup', drop);
+        it.el.removeEventListener('pointercancel', drop);
+        wake();
+      };
+      it.el.addEventListener('pointermove', move);
+      it.el.addEventListener('pointerup', drop);
+      it.el.addEventListener('pointercancel', drop);
     });
 
-    el.addEventListener('keydown', (event) => {
+    it.el.addEventListener('keydown', (event) => {
       const steps = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[event.key];
       if (!steps) return;
       event.preventDefault();
-      el.style.zIndex = ++top;
-      place(el, get(el, '--x') + steps[0] * 0.02, get(el, '--y') + steps[1] * 0.02);
+      it.el.style.zIndex = ++zTop;
+      it.x += steps[0] * W * 0.02;
+      it.y += steps[1] * H * 0.02;
+      collide(20);
+      render();
       save();
     });
-  });
+  }
+
+  settle();
+  window.addEventListener('resize', settle);
+  window.addEventListener('load', settle);   // image sizes are known for sure by now
+  window.addEventListener('pagehide', () => { render(); save(); });
 })();
