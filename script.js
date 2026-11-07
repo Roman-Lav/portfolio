@@ -31,16 +31,17 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     try { localStorage.setItem(STORAGE_KEY, theme); } catch { /* private mode: just don't remember */ }
   }
 
-  // Browser bar / background behind the page. Phones and tablets: the bright orange the
-  // footer gradient ends with and the open menu starts with (--glow-rgb at 80% over --bg,
-  // the same mix as the html background in style.css). Computers: the page background.
+  // Browser bar / the strip around the notch: the page background. On phones and tablets,
+  // while the menu is open, the orange its panel starts with (--glow-rgb at 80% over --bg,
+  // the same mix as in style.css), so the panel seems to reach up behind the clock.
   const touch = window.matchMedia('(hover: none) and (pointer: coarse)');
+  let menuOpen = false;
   function browserColor() {
     const style = getComputedStyle(root);
     const bg = style.getPropertyValue('--bg').trim();
     const glow = style.getPropertyValue('--glow-rgb').split(',').map(Number);
     const hex = /^#([0-9a-f]{6})$/i.exec(bg);
-    if (!touch.matches || !hex || glow.length !== 3) return bg;
+    if (!menuOpen || !touch.matches || !hex || glow.length !== 3) return bg;
     const base = [0, 2, 4].map((i) => parseInt(hex[1].slice(i, i + 2), 16));
     const mix = glow.map((c, i) => Math.round(c * 0.8 + base[i] * 0.2));
     return `#${mix.map((c) => c.toString(16).padStart(2, '0')).join('')}`;
@@ -51,6 +52,12 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     toggle.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
     if (themeColor) themeColor.content = browserColor();
   }
+
+  // The menu (below) tells when it opens or closes
+  document.addEventListener('menu:toggle', (event) => {
+    menuOpen = event.detail.open;
+    if (themeColor) themeColor.content = browserColor();
+  });
 
   // New theme grows as a circle from the button until it covers the screen
   function spreadFromButton(theme) {
@@ -359,6 +366,8 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const capTop = baseline - m.actualBoundingBoxAscent;
 
     document.documentElement.style.setProperty('--name-cap-top', (capTop / size).toFixed(4));
+    // height of the capitals: phones make the header buttons exactly this tall (style.css, 5c)
+    document.documentElement.style.setProperty('--name-cap-h', (m.actualBoundingBoxAscent / size).toFixed(4));
   }
 
   function measureOnce() {
@@ -384,6 +393,7 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   function setOpen(open) {
     if (open) fitWidth();   // measured while closed: the page content is in its final place by now
     root.classList.toggle('menu-open', open);
+    document.dispatchEvent(new CustomEvent('menu:toggle', { detail: { open } }));
     menu.inert = !open;
     button.setAttribute('aria-expanded', String(open));
     button.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
@@ -496,6 +506,7 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const themeButton = document.querySelector('.theme-toggle');
   const footerParts = document.querySelectorAll('.footer-animation, .tap-me, .footer-credits');
   if (!text || !main || !menuButton || !themeButton || !footerParts.length) return;
+  const phone = window.matchMedia('(max-width: 600px)');
 
   // Element's top-left corner in page coordinates
   function pageOffset(el) {
@@ -559,15 +570,20 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     // Phones: stop above the whole footer (its orange glow), not just above its contents,
     // so "waves of music." stays on the plain background
     const footer = document.querySelector('.footer');
-    if (footer && window.matchMedia('(max-width: 600px)').matches) {
+    if (footer && phone.matches) {
       footerTop = Math.min(footerTop, footer.getBoundingClientRect().top + window.scrollY);
     }
 
     const inset = Math.min(48, Math.max(16, window.innerWidth * 0.03));
+    // Phones: the text runs the full width between the outer edges of the two buttons
+    const insetX = phone.matches ? 0 : inset;
+    // The buttons swap sides on phones, so take whichever is further left / right
+    const left = Math.min(menu.left, theme.left);
+    const right = Math.max(menu.right, theme.right);
     const box = {
-      x: menu.left + inset,
+      x: left + insetX,
       y: Math.max(menu.bottom, theme.bottom) + inset,
-      w: theme.right - menu.left - inset * 2,
+      w: right - left - insetX * 2,
       h: footerTop - Math.max(menu.bottom, theme.bottom) - inset * 2,
     };
     if (box.w < 80 || box.h < 40) {   // no room (e.g. a phone on its side): back to a plain paragraph

@@ -183,6 +183,23 @@ html {
   html {
     background-color: color-mix(in srgb, rgb(var(--glow-rgb)) 80%, var(--bg));
   }
+
+  /* Phones: split in half like a flag. Pulled down from the top, the page shows the
+     theme background (white or black), so nothing stands out; pulled up from the
+     bottom, the footer's orange. The image is much taller than the page and centered
+     on it, so both halves reach far past its top and bottom edges. */
+  @media (max-width: 600px) {
+    html {
+      background-image: linear-gradient(
+        to bottom,
+        var(--bg) 50%,
+        color-mix(in srgb, rgb(var(--glow-rgb)) 80%, var(--bg)) 50%
+      );
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: 100% 1000vh;
+    }
+  }
 }
 
 body {
@@ -366,7 +383,7 @@ a:focus-visible,
   position: absolute;
   left: 0;
   width: 100%;
-  height: 2px;
+  height: calc(var(--btn-size) / 12);   /* 2px at the default 24px */
   border-radius: 1px;
   background: currentColor;
   transition: transform .3s ease, opacity .2s ease;
@@ -397,14 +414,14 @@ a:focus-visible,
   --home-open-left: calc(var(--pad-l) + max(var(--btn-size) + 10px, clamp(16px, 3vw, 48px)));
 
   position: absolute;
-  top: var(--btn-top);
+  top: calc(var(--btn-top) + (var(--btn-size) - var(--home-size, var(--btn-size))) / 2);
   left: 50%;
   transform: translateX(-50%);
   z-index: 20;   /* above the open menu, like the cross and the theme toggle */
 
   display: block;
-  width: var(--btn-size);
-  height: var(--btn-size);
+  width: var(--home-size, var(--btn-size));
+  height: var(--home-size, var(--btn-size));
 
   color: var(--ink);
   -webkit-tap-highlight-color: transparent;
@@ -532,7 +549,7 @@ a:focus-visible,
    their vertical center = the buttons' center (top of the capitals + 12px) */
 .menu-links {
   position: absolute;
-  top: calc(var(--header-pad-top) + var(--name-size) * var(--name-cap-top) + 12px);
+  top: calc(var(--btn-top) + var(--btn-size) / 2);
   left: calc(var(--pad-l) + 48px);
   right: calc(var(--pad-r) + 48px);
   transform: translateY(-50%);
@@ -581,6 +598,42 @@ a:focus-visible,
 .menu-open,
 .menu-open body {
   overflow: hidden;
+}
+
+
+/* ==========================================================================
+   5c. Phones: header buttons
+   Theme toggle on the left, menu button on the right, both as tall as the
+   "ROMAN LAV" capitals (--name-cap-h is measured by script.js). The home icon on
+   the inner pages keeps its small size and slides next to the cross on the right.
+   ========================================================================== */
+
+@media (max-width: 600px) {
+  :root,
+  html.page-contacts {
+    --btn-size: calc(var(--name-size) * var(--name-cap-h, .7));
+    --home-size: 1.5rem;
+  }
+
+  .theme-toggle {
+    right: auto;
+    left: var(--pad-l);
+  }
+
+  .menu-toggle {
+    left: auto;
+    right: var(--pad-r);
+  }
+
+  .home-link {
+    --home-open-left: calc(100% - var(--pad-r) - max(var(--btn-size) + 10px, clamp(16px, 3vw, 48px)) - var(--home-size));
+  }
+
+  .header--bare ~ .menu .menu-links {
+    left: calc(var(--pad-l) + max(var(--btn-size) + 10px, clamp(16px, 3vw, 48px)) + var(--home-size) + 10px);
+    right: calc(var(--pad-r) + max(var(--btn-size) + 10px, clamp(16px, 3vw, 48px)) + var(--home-size) + 10px);
+    gap: clamp(12px, 4vw, 24px);   /* the three links fit between the home icon and the theme toggle */
+  }
 }
 
 
@@ -684,10 +737,16 @@ a:focus-visible,
    The content sits low, just above the footer glow; the footer itself doesn't move.
    The photo's size follows the screen height, so the page fits one screen. */
 
-/* Contacts only: the header buttons are a little bigger and a little lower */
+/* Contacts only: the header buttons are a little lower, and on computers a little bigger
+   (phones size them by the "ROMAN LAV" capitals, section 5c) */
 html.page-contacts {
-  --btn-size: 1.75rem;
   --btn-drop: clamp(.375rem, 1.2vh, .875rem);
+}
+
+@media (min-width: 601px) {
+  html.page-contacts {
+    --btn-size: 1.75rem;
+  }
 }
 
 .main--contacts {
@@ -826,18 +885,23 @@ html.page-contacts {
     --contact-gap: clamp(.5rem, 1.6vh, 1rem);
   }
 
-  /* The pair fills main: photo at the top, the text pushed down to the footer */
-  .contact {
-    flex: 1;
-    align-items: stretch;
-    justify-content: space-between;
+  /* Centered between the header buttons and the footer glow: the same space above the
+     photo as below the text */
+  .main--contacts {
+    justify-content: center;
+    --content-top: calc(var(--btn-top) + var(--btn-size));
+    padding-bottom: var(--glow-into-main);
   }
 
-  /* Phones: the name and links take ~15rem under the photo */
+  .contact {
+    align-items: stretch;
+  }
+
+  /* Phones: the name and links take ~15rem under the photo, plus air above and below */
   .contact-photo {
     align-self: center;
-    height: clamp(5rem, min(100vh - var(--content-top) - var(--footer-h) - 17.75rem, 84vw * 1.25), 32.5rem);
-    height: clamp(5rem, min(100dvh - var(--content-top) - var(--footer-h) - 17.75rem, 84vw * 1.25), 32.5rem);
+    height: clamp(5rem, min(100vh - var(--content-top) - var(--footer-h) - var(--glow-into-main) - 17.5rem, 84vw * 1.25), 32.5rem);
+    height: clamp(5rem, min(100dvh - var(--content-top) - var(--footer-h) - var(--glow-into-main) - 17.5rem, 84vw * 1.25), 32.5rem);
   }
 
   .contact-name {
@@ -990,7 +1054,7 @@ html.page-contacts {
 }
 
 /* Phones: a photo-gallery pager instead of a free-scrolling strip. One album at a time,
-   almost edge to edge (the page gutters stay); a light swipe moves exactly one album and
+   edge to edge; a light swipe moves exactly one album and
    it snaps into the middle. The endless loop (script.js) still works underneath, so there
    is no first or last page. The swipe from the screen edge (back to the previous page)
    is the browser's own gesture and keeps working. */
@@ -999,6 +1063,9 @@ html.page-contacts {
     /* as wide as the screen minus the gutters; still shrinks on short screens
        (--album-raw) so the whole page fits */
     --album-base: calc(100vw - var(--pad-l) - var(--pad-r));
+    /* the whole screen width: past the album's edges there is only the gap
+       before the next one */
+    --album-w: 100vw;
   }
 
   .albums {
@@ -1010,6 +1077,23 @@ html.page-contacts {
   .albums > li {
     scroll-snap-align: center;
     scroll-snap-stop: always;   /* one album per swipe, even a fast one */
+  }
+
+  /* Title and artist keep the page gutter, in line with the heading above */
+  .album-info {
+    margin-inline: var(--pad-l) var(--pad-r);
+  }
+
+  /* The edge-to-edge album is tall: less padding around it and the same low footer as
+     on About, so the page still fits the screen */
+  .main:has(.carousel) {
+    padding: clamp(6px, 1.5vh, 16px) 0 calc(var(--glow-into-main) + 8px);
+  }
+
+  .main:has(.carousel) ~ .footer {
+    --glow-into-main: 10px;
+    min-height: 72px;
+    padding-top: 10px;
   }
 }
 

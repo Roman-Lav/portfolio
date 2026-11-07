@@ -19,11 +19,7 @@
       document.documentElement.setAttribute('data-theme', theme);
       // No cross-page View Transitions (Firefox, older Safari): pages fade with CSS instead
       if (!('CSSViewTransitionRule' in window)) document.documentElement.classList.add('page-fade');
-      // Browser bar color before the first paint (script.js recomputes it from style.css):
-      // phones and tablets get the orange of the footer edge, computers the page background
-      var touch = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
-      document.querySelector('meta[name="theme-color"]').setAttribute('content',
-        touch ? (theme === 'dark' ? '#995010' : '#f09749') : (theme === 'dark' ? '#18191a' : '#f7f4ef'));
+      if (theme === 'dark') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#18191a');
     })();
   </script>
 
