@@ -1112,25 +1112,43 @@ html.page-contacts {
   }
 }
 
-/* Phones held sideways (About, Vox, Contacts): "PROJECT .LAV / (c) 2026" goes; the
-   rest of the page fits the short screen. Contacts: the name and links on the left, the
-   photo against the right edge, side by side, no scrolling. (The home page has its own
-   albums-only view, section 10.) Safe areas: the gutters already keep clear of the
-   notch (--pad-l / --pad-r use env(safe-area-inset-*)). */
+/* Phones held sideways (About, Vox, Contacts): the top row ("*Tap Me" with its animation,
+   "PROJECT .LAV / (c) 2026") goes, the footer gets compact, and the theme toggle, home
+   icon and menu button sit in it, on the orange glow at the bottom of the page: they
+   scroll with the page instead of floating over the content. Contacts: the name and
+   links on the left, the photo against the right edge, as tall as the text column, no
+   scrolling. About: the text fills the screen above the footer, a little heavier.
+   (The home page has its own albums-only view, section 10.) Safe areas: the gutters
+   keep clear of the notch (--pad-l / --pad-r use env(safe-area-inset-*)). */
 @media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
-  html .footer-credits {
+  html .footer-credits,
+  html .footer-animation {
     display: none;
   }
 
-  html.page-contacts {
+  :root {
     --glow-into-main: .75rem;
     --footer-h: calc(var(--btn-bottom) + var(--btn-size) + 2rem);
+    --top-band: calc(env(safe-area-inset-top, 0px) + clamp(.75rem, 4vh, 1.5rem));
   }
 
-  html.page-contacts .header--bare {
+  /* Buttons: at the bottom of the page (body), not of the screen */
+  body {
+    position: relative;
+  }
+
+  .header--bare {
+    position: static;
     min-height: var(--top-band);
   }
 
+  html:not(.menu-open) .header--bare .theme-toggle,
+  html:not(.menu-open) .header--bare .menu-toggle,
+  html:not(.menu-open) .header--bare .home-link {
+    position: absolute;
+  }
+
+  /* Contacts */
   .main--contacts {
     --contact-gap: clamp(.375rem, 2.2vh, .75rem);
     justify-content: flex-end;
@@ -1141,15 +1159,26 @@ html.page-contacts {
     align-items: flex-end;
   }
 
+  /* script.js makes it exactly as tall as the text column: from the top of the name's
+     capitals down to the baseline of the last line */
   .contact-photo {
     margin-left: auto;
     margin-right: 0;
-    height: clamp(5rem, 100vh - var(--top-band) - var(--footer-h) - var(--glow-into-main) - 1.25rem, 40rem);
-    height: clamp(5rem, 100dvh - var(--top-band) - var(--footer-h) - var(--glow-into-main) - 1.25rem, 40rem);
+    height: clamp(5rem, 100vh - var(--top-band) - var(--footer-h) - 2rem, 40rem);
+    height: clamp(5rem, 100dvh - var(--top-band) - var(--footer-h) - 2rem, 40rem);
   }
 
   .contact-name {
     font-size: clamp(1.5rem, 4vw, 2.25rem);
+  }
+
+  /* About: heavier strokes for the bigger text */
+  .about-text {
+    font-weight: 250;
+  }
+
+  .about-text-end {
+    font-weight: 450;
   }
 }
 
@@ -1716,12 +1745,66 @@ html.page-contacts {
     overflow: hidden;
   }
 
-  body:has(.carousel) > .header,
-  body:has(.carousel) > .menu,
   body:has(.carousel) > .footer,
+  body:has(.carousel) > .header > :not(.menu-toggle),
   .main:has(.carousel) .albums-heading,
   .main:has(.carousel) .album-info {
     display: none;
+  }
+
+  /* Only the menu button is left: top right, in the middle of the space above the covers */
+  body:has(.carousel) > .header {
+    position: static;
+    padding: 0;
+  }
+
+  body:has(.carousel) .menu-toggle {
+    position: fixed;
+    top: max(env(safe-area-inset-top, 0px), (100vh - var(--album-w)) / 4 - var(--btn-size) / 2);
+    top: max(env(safe-area-inset-top, 0px), (100dvh - var(--album-w)) / 4 - var(--btn-size) / 2);
+    right: var(--pad-r);
+    bottom: auto;
+    left: auto;
+  }
+
+  /* The menu: a strip from the right edge, half an album wide, links one under another */
+  body:has(.carousel) > .menu {
+    top: 0;
+    bottom: 0;
+    left: auto;
+    right: 0;
+    width: calc(var(--album-w) / 2 + env(safe-area-inset-right, 0px));
+    height: auto;
+    /* denser than the other menus: the links sit over the album covers here */
+    background: linear-gradient(
+      to left,
+      rgba(var(--glow-rgb), .94) 0%,
+      rgba(var(--glow-rgb), .86) 55%,
+      rgba(var(--glow-rgb), .55) 85%,
+      rgba(var(--glow-rgb), 0) 100%
+    );
+    transform: translateX(100%);
+  }
+
+  .menu-open body:has(.carousel) > .menu {
+    transform: none;
+  }
+
+  body:has(.carousel) .menu-links {
+    top: 0;
+    bottom: 0;
+    left: auto;
+    right: calc(env(safe-area-inset-right, 0px) + .75rem);
+    transform: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-end;
+    gap: clamp(.75rem, 5vh, 1.5rem);
+  }
+
+  body:has(.carousel) .menu-links a {
+    font-size: clamp(.95rem, 4.8vh, 1.4rem);
+    text-shadow: 0 1px 6px rgba(0, 0, 0, .35);
   }
 
   .main:has(.carousel) {

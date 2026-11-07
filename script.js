@@ -822,3 +822,25 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     photo.focus();
   });
 })();
+
+
+/* ==========================================================================
+   Contacts, phone held sideways: the photo is exactly as tall as the text column
+   next to it (top of the name's capitals to the baseline of the last line)
+   ========================================================================== */
+
+(() => {
+  const photo = document.querySelector('.contact-photo');
+  const info = document.querySelector('.contact-info');
+  if (!photo || !info) return;
+  const sideways = window.matchMedia('(orientation: landscape) and (max-height: 500px) and (pointer: coarse)');
+
+  function size() {
+    photo.style.height = sideways.matches ? `${Math.round(info.getBoundingClientRect().height)}px` : '';
+  }
+
+  size();
+  sideways.addEventListener('change', size);
+  window.addEventListener('resize', size);
+  if (document.fonts) document.fonts.ready.then(size);
+})();
