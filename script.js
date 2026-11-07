@@ -47,7 +47,9 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
       Math.max(y, window.innerHeight - y)
     );
 
+    root.classList.add('theme-switching');
     const transition = document.startViewTransition(() => applyTheme(theme));
+    transition.finished.finally(() => root.classList.remove('theme-switching'));
     transition.ready
       .then(() => {
         root.animate(
@@ -311,8 +313,20 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
    ========================================================================== */
 
 (() => {
-  const name = document.querySelector('.name');
-  if (!name) return;
+  let name = document.querySelector('.name');
+  let temporary = false;
+  if (!name) {
+    // Inner pages have no name: measure an invisible copy so the buttons sit at the same height
+    const header = document.querySelector('.header');
+    if (!header) return;
+    name = document.createElement('div');
+    name.className = 'name';
+    name.textContent = 'ROMAN LAV';
+    name.setAttribute('aria-hidden', 'true');
+    name.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none;';
+    header.append(name);
+    temporary = true;
+  }
 
   function measure() {
     const style = getComputedStyle(name);
@@ -322,7 +336,7 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     if (!ctx || !size) return;
 
     ctx.font = `${style.fontWeight} ${size}px ${style.fontFamily}`;
-    const m = ctx.measureText(name.textContent.trim() || 'R');
+    const m = ctx.measureText((name.dataset.text || name.textContent).trim() || 'R'); // data-text: fx.js may be scrambling it
     if (m.fontBoundingBoxAscent === undefined) return; // old browser: keep CSS fallback
 
     const fontH = m.fontBoundingBoxAscent + m.fontBoundingBoxDescent;
@@ -332,5 +346,63 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     document.documentElement.style.setProperty('--name-cap-top', (capTop / size).toFixed(4));
   }
 
-  (document.fonts ? document.fonts.ready : Promise.resolve()).then(measure);
+  function measureOnce() {
+    measure();
+    if (temporary) name.remove();
+  }
+
+  (document.fonts ? document.fonts.ready : Promise.resolve()).then(measureOnce);
+})();
+
+
+/* ==========================================================================
+   Menu
+   The button toggles a full-screen overlay. Closes on Esc or a link click.
+   ========================================================================== */
+
+(() => {
+  const root = document.documentElement;
+  const button = document.querySelector('.menu-toggle');
+  const menu = document.getElementById('site-menu');
+  if (!button || !menu) return;
+
+  function setOpen(open) {
+    root.classList.toggle('menu-open', open);
+    menu.inert = !open;
+    button.setAttribute('aria-expanded', String(open));
+    button.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    if (open) menu.querySelector('a')?.focus({ preventScroll: true });
+  }
+
+  const isOpen = () => root.classList.contains('menu-open');
+
+  // The glow ends just above "Collection of my favorite sounds" (inner pages: at the top of main)
+  const heading = document.querySelector('.albums-heading') || document.querySelector('.main');
+  function fitWidth() {
+    if (!heading) return;
+    root.style.setProperty('--menu-h', `${Math.round(heading.getBoundingClientRect().top + window.scrollY)}px`);
+  }
+
+  fitWidth();
+  window.addEventListener('resize', fitWidth);
+  if (document.fonts) document.fonts.ready.then(fitWidth);
+
+  button.addEventListener('click', () => setOpen(!isOpen()));
+
+  // Click anywhere outside the panel closes it
+  document.addEventListener('click', (event) => {
+    const keep = menu.contains(event.target) || button.contains(event.target) || event.target.closest('.theme-toggle');
+    if (isOpen() && !keep) setOpen(false);
+  });
+
+  menu.addEventListener('click', (event) => {
+    if (event.target.closest('a')) setOpen(false);
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && isOpen()) {
+      setOpen(false);
+      button.focus();
+    }
+  });
 })();

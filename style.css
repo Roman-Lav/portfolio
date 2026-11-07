@@ -19,25 +19,37 @@
   --progress-track: rgba(42, 42, 42, .15);
   --progress-fill: rgba(42, 42, 42, .8);
 
-  --footer-text: #f7f4ef;                  /* light text on the orange glow (matches Loading.svg) */
+  --footer-text: var(--bg);                /* footer + menu text: page background color, follows the theme */
 
-  --toggle-bg: #2a2a2a;                    /* theme button shows the opposite theme */
+  --toggle-bg: #18191a;                    /* theme button shows the opposite theme */
   --toggle-glow: rgba(255, 120, 0, .45);
+
+  --storm-rgb: 42, 42, 42;                 /* background lightning: dark grey on light */
+  --storm-alpha: .16;
+  --grain-opacity: .05;
+
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
 
-  --bg: #000000;
+  --glow-rgb: 190, 88, 0;                  /* dimmer orange on the dark background */
+
+  --bg: #18191a;                           /* asphalt grey */
   --ink: #ece8e2;
   --muted: #9a958f;
 
   --icon-color: rgba(236, 232, 226, .75);
-  --icon-halo: rgba(0, 0, 0, .55);
+  --icon-halo: rgba(24, 25, 26, .55);
   --progress-track: rgba(255, 255, 255, .2);
   --progress-fill: rgba(255, 255, 255, .85);
 
   --toggle-bg: #f7f4ef;
+
+  --storm-rgb: 170, 173, 178;              /* background lightning: light grey on dark */
+  --storm-alpha: .2;
+  --grain-opacity: .07;
+
   --toggle-glow: rgba(255, 120, 0, .55);
 }
 
@@ -68,6 +80,9 @@
   --name-cap-top: 0.15;
   --footer-h: clamp(100px, 14vh, 150px);
   --main-pad: calc(var(--glow-into-main) + var(--glow-clear));
+  /* Moves the heading + carousel down: added on top of main, taken from its bottom,
+     so the page height stays the same and the album text ends just above the glow */
+  --main-shift: 24px;
 
   /* Lines reserved for the album title + artist (landscape phones allow up to 4) */
   --album-text-lines: 2;
@@ -124,6 +139,7 @@
   :root {
     --glow-into-main: 36px;
     --glow-clear: 32px;
+    --main-shift: 20px;
   }
 }
 
@@ -199,6 +215,7 @@ a:focus-visible,
   font-weight: 150;
   line-height: 1;
   word-spacing: 0.09em;
+  letter-spacing: -0.004em;
 
   text-shadow: 0 1px 0 var(--name-shadow);
 }
@@ -208,6 +225,25 @@ a:focus-visible,
 
   font-size: var(--text);
   color: var(--muted);
+}
+
+/* Inner pages: header without the name and intro, but just as tall,
+   so the buttons and the menu line sit exactly where they do on the home page */
+.header--bare {
+  min-height: calc(var(--header-pad-top) + var(--name-size) + clamp(6px, 1vh, 12px) + var(--text) * 1.5);
+}
+
+/* Read by screen readers, not shown */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 
@@ -259,6 +295,173 @@ a:focus-visible,
 
 
 /* ==========================================================================
+   5b. Menu (button in the top left corner + full-screen overlay)
+   ========================================================================== */
+
+/* Same size and same top as the theme toggle, mirrored to the left */
+.menu-toggle {
+  position: absolute;
+  top: calc(var(--header-pad-top) + var(--name-size) * var(--name-cap-top));
+  left: var(--pad-l);
+  z-index: 20;   /* stays above the overlay so it can close it */
+
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-block: 4px;
+
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.menu-toggle::before {
+  content: "";
+  position: absolute;
+  inset: -10px;
+}
+
+.menu-toggle span {
+  display: block;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+  transition: transform .3s ease, opacity .2s ease;
+}
+
+.menu-toggle:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
+}
+
+/* Open: the three bars turn into a cross */
+.menu-open .menu-toggle {
+  position: fixed;
+  color: var(--footer-text);
+}
+
+.menu-open .menu-toggle span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.menu-open .menu-toggle span:nth-child(2) { opacity: 0; }
+.menu-open .menu-toggle span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* Panel drops down from the top: one monotone orange glow, strongest at the outer
+   (top) edge and fading out just above "Collection of my favorite sounds"
+   (--menu-h = top of that heading, set by script.js). The name and intro hide
+   while it is open. Menu button (left) and theme toggle (right) stay on top. */
+.menu {
+  --menu-gap: 8px;   /* clear space between the glow and the heading */
+
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+
+  height: calc(var(--menu-h, 30vh) - var(--menu-gap));
+
+  color: var(--footer-text);
+  background: linear-gradient(
+    to bottom,
+    rgba(var(--glow-rgb), .80) 0%,
+    rgba(var(--glow-rgb), .66) 20%,
+    rgba(var(--glow-rgb), .48) 40%,
+    rgba(var(--glow-rgb), .30) 60%,
+    rgba(var(--glow-rgb), .14) 78%,
+    rgba(var(--glow-rgb), .04) 92%,
+    rgba(var(--glow-rgb), 0) 100%
+  );
+
+  transform: translateY(-100%);
+  visibility: hidden;
+  transition: transform .45s cubic-bezier(.4, 0, .2, 1), visibility 0s linear .45s;
+}
+
+.menu-open .menu {
+  transform: none;
+  visibility: visible;
+  transition: transform .45s cubic-bezier(.4, 0, .2, 1), visibility 0s;
+}
+
+/* Name and intro step aside while the menu is open */
+.name,
+.intro {
+  transition: opacity .3s ease;
+}
+
+.menu-open .name,
+.menu-open .intro {
+  opacity: 0;
+}
+
+/* Theme toggle works the same whether the menu is open or closed */
+.theme-toggle {
+  z-index: 20;
+}
+
+/* Links sit on one line with the menu button and the theme toggle:
+   their vertical center = the buttons' center (top of the capitals + 12px) */
+.menu-links {
+  position: absolute;
+  top: calc(var(--header-pad-top) + var(--name-size) * var(--name-cap-top) + 12px);
+  left: calc(var(--pad-l) + 48px);
+  right: calc(var(--pad-r) + 48px);
+  transform: translateY(-50%);
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(16px, 6vw, 80px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  white-space: nowrap;
+}
+
+.menu-links li + li {
+  margin-top: 0;
+}
+
+.menu-links a {
+  display: inline-block;
+
+  font-size: clamp(1rem, 3.5vw, 2.5rem);
+  font-weight: 200;
+  line-height: 1.1;
+  letter-spacing: 0.04em;
+  color: inherit;
+  text-decoration: none;
+  transition: text-shadow .2s ease;
+}
+
+.menu-links a:hover,
+.menu-links a:focus-visible {
+  text-shadow: 0 0 12px rgba(var(--glow-rgb), .9);
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu,
+  .menu-open .menu,
+  .menu-toggle span {
+    transition: none;
+  }
+}
+
+/* No page scrolling behind the open menu */
+.menu-open,
+.menu-open body {
+  overflow: hidden;
+}
+
+
+/* ==========================================================================
    6. Main
    ========================================================================== */
 
@@ -269,7 +472,10 @@ a:focus-visible,
   flex-direction: column;
   justify-content: center;
 
-  padding: var(--space) 0 calc(var(--main-pad) - var(--space));
+  padding:
+    calc(var(--space) + var(--main-shift))
+    0
+    calc(var(--main-pad) - var(--space) - var(--main-shift));
 }
 
 .albums-heading {
@@ -313,6 +519,10 @@ a:focus-visible,
   display: flex;
   align-items: flex-start;
   gap: var(--gap);
+
+  /* room for the tilted covers (overflow would clip them); margin cancels it out */
+  padding-block: 10px;
+  margin-block: -10px;
 
   overflow-x: auto;
   overscroll-behavior-x: contain;
@@ -545,18 +755,25 @@ a:focus-visible,
 
 /* Animated Instagram link with the "Tap Me" label */
 .footer-animation {
+  --tap-w: clamp(100px, 14vw, 150px);
+
   position: absolute;
-  left: var(--pad-l);
+  /* Loading.svg's shapes reach at most 10% (61.6 of 616) from its left edge,
+     so shifting by that much puts the animation in line with the menu icon.
+     "Tap Me" moves together with it. */
+  left: calc(var(--pad-l) - var(--tap-w) * 0.1);
   bottom: 0;
 
   display: block;
-  width: clamp(100px, 14vw, 150px);
+  width: var(--tap-w);
 
   cursor: pointer;
 }
 
-.footer-animation img {
+.footer-loader {
+  display: block;
   width: 100%;
+  height: auto;
 }
 
 .tap-me {
@@ -567,8 +784,6 @@ a:focus-visible,
   line-height: 1;
   letter-spacing: 0.08em;
   white-space: nowrap;
-
-  color: var(--footer-text);
 }
 
 .footer-credits {
@@ -587,6 +802,8 @@ a:focus-visible,
 
 .footer-project {
   position: relative;
+  -webkit-user-select: none;
+  user-select: none;   /* three taps open the game, so no text selection */
   left: 2px;
   letter-spacing: 0.01em;
 }
@@ -628,9 +845,10 @@ a:focus-visible,
    11. Theme change animation
    ========================================================================== */
 
-/* View Transitions: the default cross-fade is replaced by a growing circle (see script.js) */
-::view-transition-old(root),
-::view-transition-new(root) {
+/* View Transitions: during a theme switch the default cross-fade is replaced
+   by a growing circle (see script.js) */
+html.theme-switching::view-transition-old(root),
+html.theme-switching::view-transition-new(root) {
   animation: none;
   mix-blend-mode: normal;
 }
@@ -645,4 +863,286 @@ a:focus-visible,
     color .35s ease,
     box-shadow .35s ease,
     text-shadow .35s ease !important;
+}
+
+
+/* ==========================================================================
+   12. Visual layers (see fx.js)
+   ========================================================================== */
+
+/* Background lightning, behind all content */
+.fx-storm {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Soft orange light following the mouse */
+.fx-glow {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: -1;
+
+  width: 560px;
+  height: 560px;
+  margin: -280px 0 0 -280px;
+  border-radius: 50%;
+
+  background: radial-gradient(circle, rgba(var(--glow-rgb), .10) 0%, rgba(var(--glow-rgb), .04) 35%, transparent 65%);
+  pointer-events: none;
+
+  opacity: 0;
+  transition: opacity .5s ease;
+  will-change: transform;
+}
+
+.fx-glow.is-on {
+  opacity: 1;
+}
+
+/* Film grain over everything */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+
+  opacity: var(--grain-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+}
+
+/* Album covers tilt in 3D under the mouse, with a moving glare */
+.album-cover {
+  transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform .6s cubic-bezier(.2, .7, .2, 1);
+}
+
+.album-cover.is-tilted {
+  transition: transform .08s linear;
+}
+
+.album-cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+
+  background: radial-gradient(circle at var(--gx, 50%) var(--gy, 50%), rgba(255, 255, 255, .35), transparent 55%);
+  mix-blend-mode: soft-light;
+
+  opacity: 0;
+  transition: opacity .3s ease;
+}
+
+.album-cover.is-tilted::after {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-storm,
+  .fx-glow {
+    display: none;
+  }
+
+  .album-cover {
+    transform: none;
+    transition: none;
+  }
+}
+
+
+/* ==========================================================================
+   13. Page transitions (between index, About, Vox, Contacts)
+   Buttons and footer stay in place, only the content changes.
+   ========================================================================== */
+
+@view-transition {
+  navigation: auto;
+}
+
+html:not(.theme-switching) .footer       { view-transition-name: footer; }
+html:not(.theme-switching) .menu-toggle  { view-transition-name: menu-toggle; }
+html:not(.theme-switching) .theme-toggle { view-transition-name: theme-toggle; }
+
+html:not(.theme-switching)::view-transition-old(root) {
+  animation: fx-page-out .3s cubic-bezier(.4, 0, 1, 1) both;
+}
+
+html:not(.theme-switching)::view-transition-new(root) {
+  animation: fx-page-in .45s cubic-bezier(0, 0, .2, 1) both;
+}
+
+@keyframes fx-page-out {
+  to { opacity: 0; filter: blur(8px); transform: translateY(-10px); }
+}
+
+@keyframes fx-page-in {
+  from { opacity: 0; filter: blur(8px); transform: translateY(10px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+
+/* ==========================================================================
+   14. STORM mini game (see game.js)
+   ========================================================================== */
+
+.game-open,
+.game-open body {
+  overflow: hidden;
+}
+
+.game {
+  position: fixed;
+  inset: 0;
+  z-index: 90;   /* above everything except the grain */
+
+  background: var(--bg);
+  color: var(--ink);
+  touch-action: none;
+  cursor: crosshair;
+
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .35s ease, visibility 0s linear .35s;
+}
+
+.game.is-open {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity .35s ease, visibility 0s;
+}
+
+.game-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.game-hud {
+  position: absolute;
+  top: calc(var(--header-pad-top) + var(--name-size) * var(--name-cap-top));
+  left: 0;
+  right: 0;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+
+  font-weight: 200;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.game-score {
+  font-size: clamp(2rem, 6vw, 3.5rem);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .04em;
+}
+
+.game-best {
+  font-size: .8rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.game-screen {
+  position: absolute;
+  inset: 0;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+
+  padding: 0 var(--pad-r) 0 var(--pad-l);
+  text-align: center;
+  pointer-events: none;
+}
+
+.game-screen[hidden] {
+  display: none;
+}
+
+.game-screen p {
+  margin: 0;
+}
+
+.game-title {
+  font-size: clamp(3rem, 14vw, 9rem);
+  font-weight: 150;
+  line-height: 1;
+  letter-spacing: .08em;
+  text-shadow: 0 1px 0 var(--name-shadow), 0 0 40px rgba(var(--glow-rgb), .35);
+}
+
+.game-text {
+  font-size: var(--text);
+}
+
+.game-hint {
+  margin-top: 8px !important;
+  font-size: .75rem;
+  letter-spacing: .08em;
+  color: var(--muted);
+}
+
+/* Same place and size as the menu button: a cross */
+.game-close {
+  position: absolute;
+  top: calc(var(--header-pad-top) + var(--name-size) * var(--name-cap-top));
+  left: var(--pad-l);
+
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.game-close::before {
+  content: "";
+  position: absolute;
+  inset: -10px;
+}
+
+.game-close span {
+  position: absolute;
+  top: 11px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+  transform: rotate(45deg);
+}
+
+.game-close span + span {
+  transform: rotate(-45deg);
+}
+
+.game-close:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
 }
