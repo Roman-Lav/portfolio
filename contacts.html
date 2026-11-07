@@ -55,9 +55,35 @@
     </ul>
   </nav>
 
-  <!-- Empty for now: content comes later -->
-  <main class="main">
-    <h1 class="visually-hidden">Contacts</h1>
+  <main class="main main--contacts">
+    <section class="contact">
+      <div class="contact-info">
+        <p class="contact-name">Roman Lavrynenko</p>
+        <ul class="contact-links">
+          <li>
+            <span class="contact-label">Email</span>
+            <!-- Address written as HTML character codes: browsers show and open it as usual,
+                 simple spam bots scanning the source for "name@domain" don't see it -->
+            <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#114;&#111;&#109;&#97;&#110;&#108;&#97;&#118;&#57;&#57;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;">&#114;&#111;&#109;&#97;&#110;&#108;&#97;&#118;&#57;&#57;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;</a>
+          </li>
+          <li>
+            <span class="contact-label">LinkedIn</span>
+            <a href="https://www.linkedin.com/in/roman-lavrynenko/" target="_blank" rel="noopener noreferrer">https://www.linkedin.com/in/roman-lavrynenko/</a>
+          </li>
+          <li>
+            <span class="contact-label">Instagram</span>
+            <a href="https://www.instagram.com/ugly.lav?rpxt=OGZma3gyYmdjb2tn&amp;utm_source=qr" target="_blank" rel="noopener noreferrer">@ugly.lav</a>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Photo: put the file at assets/photo.jpg and it shows up here, no code changes.
+           Until then the image fails to load, removes itself, and the frame shows a neutral
+           silhouette instead (drawn with CSS, see .contact-photo in style.css). -->
+      <div class="contact-photo">
+        <img src="Photo for contacts.jpeg" alt="Roman Lav" width="800" height="1000" decoding="async" onerror="this.remove()">
+      </div>
+    </section>
   </main>
 
   <footer class="footer">

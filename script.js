@@ -540,7 +540,13 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     if (document.documentElement.classList.contains('menu-open')) return; // the menu button is fixed then
     const menu = edges(menuButton);
     const theme = edges(themeButton);
-    const footerTop = Math.min(...Array.from(footerParts, (el) => el.getBoundingClientRect().top + window.scrollY));
+    let footerTop = Math.min(...Array.from(footerParts, (el) => el.getBoundingClientRect().top + window.scrollY));
+    // Phones: stop above the whole footer (its orange glow), not just above its contents,
+    // so "waves of music." stays on the plain background
+    const footer = document.querySelector('.footer');
+    if (footer && window.matchMedia('(max-width: 600px)').matches) {
+      footerTop = Math.min(footerTop, footer.getBoundingClientRect().top + window.scrollY);
+    }
 
     const inset = Math.min(48, Math.max(16, window.innerWidth * 0.03));
     const box = {
