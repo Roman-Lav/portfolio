@@ -638,6 +638,129 @@ a:focus-visible,
 
 
 /* ==========================================================================
+   5d. Phones and tablets: controls at the bottom, credits at the top
+   Made for the thumb: the theme toggle (left), the home icon (middle, inner
+   pages) and the menu button (right) sit at the bottom, on the footer glow. The
+   menu rises from the bottom. "*Tap Me" with its animation and "PROJECT .LAV /
+   (c) 2026" move up to the top. Same media query as in script.js (SWAP).
+   ========================================================================== */
+
+@media (max-width: 600px), (hover: none) and (pointer: coarse) and (max-width: 1100px) {
+  :root {
+    /* bottom row: distance of the buttons from the bottom edge */
+    --btn-bottom: calc(env(safe-area-inset-bottom, 0px) + clamp(16px, 3.5vh, 32px));
+    /* top row: where the credits start, and how tall the band is
+       ("*Tap Me" + the animation, 0.4 of its width tall) */
+    --tap-w: clamp(100px, 14vw, 150px);
+    --top-row: calc(env(safe-area-inset-top, 0px) + clamp(10px, 2vh, 18px));
+    --top-band: calc(var(--top-row) + var(--tap-w) * 0.4 + 12px);
+  }
+
+  /* Bottom row */
+  .theme-toggle,
+  .menu-toggle,
+  .home-link {
+    position: fixed;
+    top: auto;
+  }
+
+  .theme-toggle {
+    right: auto;
+    left: var(--pad-l);
+    bottom: var(--btn-bottom);
+  }
+
+  .menu-toggle {
+    left: auto;
+    right: var(--pad-r);
+    bottom: var(--btn-bottom);
+  }
+
+  .home-link {
+    bottom: calc(var(--btn-bottom) + (var(--btn-size) - var(--home-size, var(--btn-size))) / 2);
+  }
+
+  /* The menu links take the bottom row while the menu is open: the home icon steps
+     aside (it's back as soon as the menu closes) */
+  .menu-open .home-link {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .2s ease, visibility 0s linear .2s;
+  }
+
+  /* Menu: rises from the bottom, strongest orange at the bottom edge; the links sit on
+     the button row, between the theme toggle and the menu button (script.js sets
+     --menu-h from the row's top) */
+  .menu {
+    top: auto;
+    bottom: 0;
+    height: var(--menu-h, 30vh);
+    background: linear-gradient(
+      to top,
+      rgba(var(--glow-rgb), .80) 0%,
+      rgba(var(--glow-rgb), .66) 20%,
+      rgba(var(--glow-rgb), .48) 40%,
+      rgba(var(--glow-rgb), .30) 60%,
+      rgba(var(--glow-rgb), .14) 78%,
+      rgba(var(--glow-rgb), .04) 92%,
+      rgba(var(--glow-rgb), 0) 100%
+    );
+    transform: translateY(100%);
+  }
+
+  .menu-links,
+  .header--bare ~ .menu .menu-links {
+    top: auto;
+    bottom: calc(var(--btn-bottom) + var(--btn-size) / 2);
+    left: calc(var(--pad-l) + var(--btn-size) + 12px);
+    right: calc(var(--pad-r) + var(--btn-size) + 12px);
+    transform: translateY(50%);
+    gap: clamp(10px, 3.5vw, 40px);
+  }
+
+  /* a little bigger and a little bolder than on computers */
+  .menu-links a {
+    font-size: clamp(1.05rem, 4.6vw, 2.5rem);
+    font-weight: 300;
+  }
+
+  /* The name stays: the menu is at the other end of the screen now */
+  .menu-open .name,
+  .menu-open .intro {
+    opacity: 1;
+  }
+
+  /* Top row: the credits, in the text color (the orange glow stays at the bottom).
+     "html" in front: the footer rules further down this file would win otherwise */
+  html .footer-animation,
+  html .footer-credits {
+    position: fixed;
+    top: var(--top-row);
+    bottom: auto;
+    z-index: 20;
+    color: var(--ink);
+  }
+
+  html .footer-credits {
+    right: var(--pad-r);
+  }
+
+  /* Inner pages: the header only holds the top row now */
+  .header--bare {
+    min-height: calc(var(--top-band) + clamp(8px, 2vh, 16px));
+  }
+
+  /* The footer is the button row's backdrop: tall enough for it */
+  html .footer {
+    min-height: max(var(--footer-h), var(--btn-bottom) + var(--btn-size) + 2rem);
+  }
+}
+
+
+/* ==========================================================================
    6. Main
    ========================================================================== */
 
@@ -698,12 +821,12 @@ a:focus-visible,
   text-align-last: center;
 }
 
-/* Narrow column: justified lines get huge gaps around long words, so let words break
-   (never inside "waves of music.") */
+/* Phones: whole words only (no hyphenation), "waves of music." a little heavier */
 @media (max-width: 600px) {
   .about-text {
-    -webkit-hyphens: auto;
-    hyphens: auto;
+    /* no words split across lines on phones; script.js picks a size that fits whole words */
+    -webkit-hyphens: manual;
+    hyphens: manual;
   }
 
   .about-text-end {
@@ -966,6 +1089,15 @@ html.page-contacts {
   aspect-ratio: 4 / 5;
 }
 
+/* Phones and tablets (controls at the bottom, section 5d): the content starts under the
+   top row of credits, centered between it and the footer */
+@media (max-width: 600px), (hover: none) and (pointer: coarse) and (max-width: 1100px) {
+  .main--contacts {
+    --content-top: calc(var(--top-band) + clamp(8px, 2vh, 16px));
+    margin-top: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .contact-links a {
     transition: none;
@@ -1068,8 +1200,8 @@ html.page-contacts {
        scrolls (room for the header, heading, title + artist and the footer glow).
        The gap between albums equals the space left on each side, so the neighbours
        start exactly at the screen edges and stay out of sight. */
-    --album-w: min(84vw, 100vh - var(--name-size) - 15.5rem);
-    --album-w: min(84vw, 100dvh - var(--name-size) - 15.5rem);
+    --album-w: min(84vw, (100vh - 19rem) * 0.86);
+    --album-w: min(84vw, (100dvh - 19rem) * 0.86);
     --gap: calc((100vw - var(--album-w)) / 2);
   }
 
@@ -1090,26 +1222,19 @@ html.page-contacts {
    album with its title and artist, and the orange glow rising from the bottom right up
    to the artist line. No intro line, no footer animation or credits. One screen, no scrolling. */
 @media (max-width: 600px) {
-  /* "ROMAN LAV" in the top left corner, the theme toggle's spot. The toggle only appears
-     while the menu is open (the name fades out then, see section 5b) */
+  /* "ROMAN LAV" exactly as wide as the album and in line with it
+     (--name-ratio = the name's width per 1px of font size, measured by script.js) */
   .header:not(.header--bare) {
     text-align: left;
   }
 
+  .header:not(.header--bare) .name {
+    margin-left: calc(var(--gap) - var(--pad-l));
+    font-size: calc(var(--album-w) / var(--name-ratio, 5.3));
+  }
+
   .header:not(.header--bare) .intro {
     display: none;
-  }
-
-  .header:not(.header--bare) .theme-toggle {
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity .3s ease, visibility 0s linear .3s, box-shadow .2s ease, transform .2s ease;
-  }
-
-  .menu-open .header:not(.header--bare) .theme-toggle {
-    opacity: 1;
-    visibility: visible;
-    transition: opacity .3s ease, visibility 0s, box-shadow .2s ease, transform .2s ease;
   }
 
   /* Content sits a little below the header; the footer takes all the space under it */
@@ -1127,7 +1252,7 @@ html.page-contacts {
   .main:has(.carousel) ~ .footer {
     --glow-into-main: 12px;
     flex: 1 0 auto;
-    min-height: 3.5rem;
+    min-height: calc(var(--btn-bottom) + var(--btn-size) + 1.25rem);
     padding: 0;
   }
 
@@ -1137,12 +1262,6 @@ html.page-contacts {
   }
 }
 
-@media (max-width: 600px) and (prefers-reduced-motion: reduce) {
-  .header:not(.header--bare) .theme-toggle,
-  .menu-open .header:not(.header--bare) .theme-toggle {
-    transition: none;
-  }
-}
 
 
 /* ==========================================================================

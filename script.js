@@ -1,5 +1,9 @@
 'use strict';
 
+// Phones and tablets: header controls at the bottom, footer credits at the top
+// (the same media query as section 5d in style.css)
+const SWAP = '(max-width: 600px), (hover: none) and (pointer: coarse) and (max-width: 1100px)';
+
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
 
@@ -41,7 +45,7 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const bg = style.getPropertyValue('--bg').trim();
     const glow = style.getPropertyValue('--glow-rgb').split(',').map(Number);
     const hex = /^#([0-9a-f]{6})$/i.exec(bg);
-    if (!menuOpen || !touch.matches || !hex || glow.length !== 3) return bg;
+    if (!menuOpen || !touch.matches || window.matchMedia(SWAP).matches || !hex || glow.length !== 3) return bg;
     const base = [0, 2, 4].map((i) => parseInt(hex[1].slice(i, i + 2), 16));
     const mix = glow.map((c, i) => Math.round(c * 0.8 + base[i] * 0.2));
     return `#${mix.map((c) => c.toString(16).padStart(2, '0')).join('')}`;
@@ -368,6 +372,13 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     document.documentElement.style.setProperty('--name-cap-top', (capTop / size).toFixed(4));
     // height of the capitals: phones make the header buttons exactly this tall (style.css, 5c)
     document.documentElement.style.setProperty('--name-cap-h', (m.actualBoundingBoxAscent / size).toFixed(4));
+    // width of "ROMAN LAV" per 1px of font size: phones size the name to the album's width
+    if (!temporary) {
+      const link = name.querySelector('a') || name;
+      const width = link.getBoundingClientRect().width;
+      const linkSize = parseFloat(getComputedStyle(link).fontSize) || size;
+      if (width) document.documentElement.style.setProperty('--name-ratio', (width / linkSize).toFixed(4));
+    }
   }
 
   function measureOnce() {
@@ -409,8 +420,21 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   // panel's bottom edge moves up.
   const header = document.querySelector('.header');
   const links = menu.querySelector('.menu-links');
+  const swap = window.matchMedia(SWAP);
   function fitWidth() {
     if (!header) return;
+
+    // Phones and tablets: the menu rises from the bottom (style.css, 5d). It covers the
+    // button row and the links plus the same inset as below, measured from the bottom edge.
+    if (swap.matches) {
+      const box = button.getBoundingClientRect();
+      const center = box.top + box.height / 2;
+      const lineTop = Math.min(box.top, center - (links ? links.offsetHeight / 2 : 0));
+      const inset = Math.min(48, Math.max(16, window.innerWidth * 0.03));
+      root.style.setProperty('--menu-h', `${Math.round(window.innerHeight - lineTop + inset)}px`);
+      return;
+    }
+
     let bottom = header.getBoundingClientRect().bottom;
 
     if (header.classList.contains('header--bare')) {
@@ -566,11 +590,19 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     if (document.documentElement.classList.contains('menu-open')) return; // the menu button is fixed then
     const menu = edges(menuButton);
     const theme = edges(themeButton);
-    let footerTop = Math.min(...Array.from(footerParts, (el) => el.getBoundingClientRect().top + window.scrollY));
+    // Everything around the text: buttons and footer pieces. Whatever sits in the top
+    // half of the screen bounds the box from above, the rest from below (on phones and
+    // tablets the buttons are at the bottom and the credits at the top, style.css 5d)
+    const around = [menuButton, themeButton, ...footerParts].map((el) => {
+      const r = el.getBoundingClientRect();
+      return { top: r.top + window.scrollY, bottom: r.bottom + window.scrollY, upper: r.top + r.height / 2 < window.innerHeight / 2 };
+    });
+    const topBound = Math.max(0, ...around.filter((r) => r.upper).map((r) => r.bottom));
+    let footerTop = Math.min(...around.filter((r) => !r.upper).map((r) => r.top));
     // Phones: stop above the whole footer (its orange glow), not just above its contents,
     // so "waves of music." stays on the plain background
     const footer = document.querySelector('.footer');
-    if (footer && phone.matches) {
+    if (footer && (phone.matches || window.matchMedia(SWAP).matches)) {
       footerTop = Math.min(footerTop, footer.getBoundingClientRect().top + window.scrollY);
     }
 
@@ -582,9 +614,9 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const right = Math.max(menu.right, theme.right);
     const box = {
       x: left + insetX,
-      y: Math.max(menu.bottom, theme.bottom) + inset,
+      y: topBound + inset,
       w: right - left - insetX * 2,
-      h: footerTop - Math.max(menu.bottom, theme.bottom) - inset * 2,
+      h: footerTop - topBound - inset * 2,
     };
     if (box.w < 80 || box.h < 40) {   // no room (e.g. a phone on its side): back to a plain paragraph
       text.classList.remove('is-fitted');
