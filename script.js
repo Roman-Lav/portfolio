@@ -31,10 +31,25 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     try { localStorage.setItem(STORAGE_KEY, theme); } catch { /* private mode: just don't remember */ }
   }
 
+  // Browser bar / background behind the page. Phones and tablets: the bright orange the
+  // footer gradient ends with and the open menu starts with (--glow-rgb at 80% over --bg,
+  // the same mix as the html background in style.css). Computers: the page background.
+  const touch = window.matchMedia('(hover: none) and (pointer: coarse)');
+  function browserColor() {
+    const style = getComputedStyle(root);
+    const bg = style.getPropertyValue('--bg').trim();
+    const glow = style.getPropertyValue('--glow-rgb').split(',').map(Number);
+    const hex = /^#([0-9a-f]{6})$/i.exec(bg);
+    if (!touch.matches || !hex || glow.length !== 3) return bg;
+    const base = [0, 2, 4].map((i) => parseInt(hex[1].slice(i, i + 2), 16));
+    const mix = glow.map((c, i) => Math.round(c * 0.8 + base[i] * 0.2));
+    return `#${mix.map((c) => c.toString(16).padStart(2, '0')).join('')}`;
+  }
+
   function applyTheme(theme) {
     root.dataset.theme = theme;
     toggle.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
-    if (themeColor) themeColor.content = getComputedStyle(root).getPropertyValue('--bg').trim();
+    if (themeColor) themeColor.content = browserColor();
   }
 
   // New theme grows as a circle from the button until it covers the screen
@@ -600,8 +615,8 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 /* ==========================================================================
    Contacts: enlarged photo
    Click, tap, Enter or Space on the photo opens it big in a <dialog> over the page.
-   Closes on the backdrop, the cross or Esc (the dialog handles Esc itself), and the
-   focus goes back to the photo. Without assets/photo.jpg it shows the silhouette.
+   Another click or tap anywhere (photo or backdrop), Enter, Space or Esc closes it,
+   and the focus goes back to the photo. Without the photo file it shows the silhouette.
    ========================================================================== */
 
 (() => {
@@ -609,7 +624,6 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const viewer = document.querySelector('.photo-viewer');
   if (!photo || !viewer || typeof viewer.showModal !== 'function') return;
   const body = viewer.querySelector('.photo-viewer-body');
-  const closeButton = viewer.querySelector('.photo-viewer-close');
 
   function open() {
     const img = photo.querySelector('img');
@@ -626,21 +640,24 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
       body.replaceChildren(empty);
     }
     viewer.showModal();
-    closeButton.focus();
+    viewer.focus();
   }
+
+  const isPress = (event) => event.key === 'Enter' || event.key === ' ';
 
   photo.addEventListener('click', open);
   photo.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();   // Space would scroll the page
-      open();
-    }
+    if (!isPress(event)) return;
+    event.preventDefault();   // Space would scroll the page
+    event.stopPropagation();  // so the same key press doesn't reach the open dialog
+    open();
   });
 
-  closeButton.addEventListener('click', () => viewer.close());
-  // A click anywhere but the photo itself (the dark backdrop) closes it
-  viewer.addEventListener('click', (event) => {
-    if (!event.target.closest('img, .photo-viewer-empty, .photo-viewer-close')) viewer.close();
+  viewer.addEventListener('click', () => viewer.close());
+  viewer.addEventListener('keydown', (event) => {
+    if (!isPress(event)) return;
+    event.preventDefault();
+    viewer.close();
   });
   viewer.addEventListener('close', () => {
     body.replaceChildren();

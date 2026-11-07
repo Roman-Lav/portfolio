@@ -19,7 +19,11 @@
       document.documentElement.setAttribute('data-theme', theme);
       // No cross-page View Transitions (Firefox, older Safari): pages fade with CSS instead
       if (!('CSSViewTransitionRule' in window)) document.documentElement.classList.add('page-fade');
-      if (theme === 'dark') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#18191a');
+      // Browser bar color before the first paint (script.js recomputes it from style.css):
+      // phones and tablets get the orange of the footer edge, computers the page background
+      var touch = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+      document.querySelector('meta[name="theme-color"]').setAttribute('content',
+        touch ? (theme === 'dark' ? '#995010' : '#f09749') : (theme === 'dark' ? '#18191a' : '#f7f4ef'));
     })();
   </script>
 
@@ -88,10 +92,7 @@
   </main>
 
   <!-- Enlarged photo, opened from the photo above -->
-  <dialog class="photo-viewer" aria-label="Photo">
-    <button class="photo-viewer-close" type="button" aria-label="Close">
-      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 5l14 14M19 5 5 19" /></svg>
-    </button>
+  <dialog class="photo-viewer" aria-label="Photo (click or press Esc to close)" tabindex="-1">
     <div class="photo-viewer-body"></div>
   </dialog>
 

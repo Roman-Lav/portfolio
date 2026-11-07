@@ -505,6 +505,13 @@ a:focus-visible,
   transition: transform .45s cubic-bezier(.4, 0, .2, 1), visibility 0s;
 }
 
+/* Phones: the panel drops 10px further down */
+@media (max-width: 600px) {
+  .menu {
+    --menu-gap: -10px;
+  }
+}
+
 /* Name and intro step aside while the menu is open */
 .name,
 .intro {
@@ -819,15 +826,18 @@ html.page-contacts {
     --contact-gap: clamp(.5rem, 1.6vh, 1rem);
   }
 
+  /* The pair fills main: photo at the top, the text pushed down to the footer */
   .contact {
+    flex: 1;
     align-items: stretch;
+    justify-content: space-between;
   }
 
-  /* Phones: the name and links take ~16rem under the photo */
+  /* Phones: the name and links take ~15rem under the photo */
   .contact-photo {
     align-self: center;
-    height: clamp(5rem, min(100vh - var(--content-top) - var(--footer-h) - 18rem, 70vw * 1.25), 32.5rem);
-    height: clamp(5rem, min(100dvh - var(--content-top) - var(--footer-h) - 18rem, 70vw * 1.25), 32.5rem);
+    height: clamp(5rem, min(100vh - var(--content-top) - var(--footer-h) - 17.75rem, 84vw * 1.25), 32.5rem);
+    height: clamp(5rem, min(100dvh - var(--content-top) - var(--footer-h) - 17.75rem, 84vw * 1.25), 32.5rem);
   }
 
   .contact-name {
@@ -836,7 +846,7 @@ html.page-contacts {
 }
 
 /* Enlarged photo: opens over the page on a dark backdrop (script.js, <dialog>).
-   Closes on the backdrop, the cross or Esc. Shown whole, never cropped or stretched. */
+   Another click or tap anywhere closes it (or Esc). Shown whole, never cropped or stretched. */
 .photo-viewer {
   width: 100%;
   height: 100%;
@@ -848,6 +858,8 @@ html.page-contacts {
 
   background: transparent;
   color: #fff;
+  cursor: zoom-out;
+  outline: none;   /* the dialog itself takes the focus while open */
 }
 
 .photo-viewer[open] {
@@ -883,44 +895,6 @@ html.page-contacts {
 .photo-viewer-empty {
   height: min(80dvh, 92vw * 1.25);
   aspect-ratio: 4 / 5;
-}
-
-.photo-viewer-close {
-  position: absolute;
-  top: clamp(1rem, 3vw, 2rem);
-  right: clamp(1rem, 3vw, 2rem);
-
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
-  border: 0;
-
-  background: none;
-  color: inherit;
-  cursor: pointer;
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-.photo-viewer-close::before {   /* bigger hit area for fingers */
-  content: "";
-  position: absolute;
-  inset: -.75rem;
-}
-
-.photo-viewer-close svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-}
-
-.photo-viewer-close:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 4px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1012,6 +986,30 @@ html.page-contacts {
 @media (hover: none) {
   .edge {
     display: none;
+  }
+}
+
+/* Phones: a photo-gallery pager instead of a free-scrolling strip. One album at a time,
+   almost edge to edge (the page gutters stay); a light swipe moves exactly one album and
+   it snaps into the middle. The endless loop (script.js) still works underneath, so there
+   is no first or last page. The swipe from the screen edge (back to the previous page)
+   is the browser's own gesture and keeps working. */
+@media (max-width: 600px) {
+  :root {
+    /* as wide as the screen minus the gutters; still shrinks on short screens
+       (--album-raw) so the whole page fits */
+    --album-base: calc(100vw - var(--pad-l) - var(--pad-r));
+  }
+
+  .albums {
+    scroll-snap-type: x mandatory;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .albums > li {
+    scroll-snap-align: center;
+    scroll-snap-stop: always;   /* one album per swipe, even a fast one */
   }
 }
 
