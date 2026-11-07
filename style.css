@@ -12,7 +12,9 @@
   --muted: #7d7a76;
 
   --name-shadow: rgba(255, 140, 0, .85);   /* thin orange line under the name */
-  --glow-rgb: 255, 120, 0;                 /* footer glow, used with different alphas */
+  /* The site's orange: footer glow, menu panel and the overscroll background all use it.
+     Slightly softened: hsl(28, 86%, 53%), was the pure 255, 120, 0 */
+  --glow-rgb: 238, 128, 32;
 
   --icon-color: rgba(42, 42, 42, .7);      /* play / pause icon */
   --icon-halo: rgba(255, 255, 255, .5);
@@ -35,7 +37,7 @@
 [data-theme="dark"] {
   color-scheme: dark;
 
-  --glow-rgb: 190, 88, 0;                  /* dimmer orange on the dark background */
+  --glow-rgb: 185, 94, 14;                 /* dimmer orange on the dark background: hsl(28, 86%, 39%), was 190, 88, 0 */
 
   --bg: #18191a;                           /* asphalt grey */
   --ink: #ece8e2;
@@ -68,6 +70,12 @@
   --pad-r: max(var(--gutter), env(safe-area-inset-right, 0px));
 
   --space: clamp(12px, 2.5vh, 32px);
+
+  /* Header buttons (menu, home icon, theme toggle): size and top edge. The top lines up
+     with the "ROMAN LAV" capitals; --btn-drop lowers them (Contacts only, see section 6) */
+  --btn-size: 1.5rem;
+  --btn-drop: 0rem;
+  --btn-top: calc(var(--header-pad-top) + var(--name-size) * var(--name-cap-top) + var(--btn-drop));
 
   /* One text size for header and main (everything except h1) */
   --text: 1.1rem;
@@ -162,8 +170,19 @@
   background-color: var(--selection);
 }
 
+/* Overscroll (pulling the page past its top or bottom, e.g. iOS Safari's bounce):
+   the background behind the page is orange, the same color the footer gradient ends
+   with at the bottom edge (--glow-rgb at 80% over the page background). The body
+   paints the theme background, so the orange only shows when the page is pulled. */
 html {
   -webkit-text-size-adjust: 100%;
+  background-color: rgb(var(--glow-rgb));
+}
+
+@supports (color: color-mix(in srgb, red, blue)) {
+  html {
+    background-color: color-mix(in srgb, rgb(var(--glow-rgb)) 80%, var(--bg));
+  }
 }
 
 body {
@@ -179,6 +198,9 @@ body {
 
   background-color: var(--bg);
   color: var(--ink);
+  /* own stacking layer: the background canvases (z-index: -1) stay above the body's
+     background now that the html element has its own (orange) background */
+  isolation: isolate;
 }
 
 ul {
@@ -264,11 +286,11 @@ a:focus-visible,
 .theme-toggle {
   position: absolute;
   /* top edge of the button = top edge of the "ROMAN LAV" capitals */
-  top: calc(var(--header-pad-top) + var(--name-size) * var(--name-cap-top));
+  top: var(--btn-top);
   right: var(--pad-r);
 
-  width: 24px;
-  height: 24px;
+  width: var(--btn-size);
+  height: var(--btn-size);
   padding: 0;
   border: 0;
   border-radius: 50%;
@@ -311,12 +333,12 @@ a:focus-visible,
 /* Same size and same top as the theme toggle, mirrored to the left */
 .menu-toggle {
   position: absolute;
-  top: calc(var(--header-pad-top) + var(--name-size) * var(--name-cap-top));
+  top: var(--btn-top);
   left: var(--pad-l);
   z-index: 20;   /* stays above the overlay so it can close it */
 
-  width: 24px;
-  height: 24px;
+  width: var(--btn-size);
+  height: var(--btn-size);
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -338,21 +360,21 @@ a:focus-visible,
   inset: -10px;
 }
 
-/* The three bars are placed absolutely (top 4px, 11px, 18px), not laid out with flexbox:
+/* The three bars are placed absolutely (at 4, 11 and 18 of 24), not laid out with flexbox:
    iOS Safari doesn't always lay out flex children inside a <button>, and the bars vanished */
 .menu-toggle span {
   position: absolute;
   left: 0;
-  width: 24px;
+  width: 100%;
   height: 2px;
   border-radius: 1px;
   background: currentColor;
   transition: transform .3s ease, opacity .2s ease;
 }
 
-.menu-toggle span:nth-child(1) { top: 4px; }
-.menu-toggle span:nth-child(2) { top: 11px; }
-.menu-toggle span:nth-child(3) { top: 18px; }
+.menu-toggle span:nth-child(1) { top: calc(var(--btn-size) * 4 / 24); }
+.menu-toggle span:nth-child(2) { top: calc(var(--btn-size) * 11 / 24); }
+.menu-toggle span:nth-child(3) { top: calc(var(--btn-size) * 18 / 24); }
 
 .menu-toggle:focus-visible {
   outline: 2px solid currentColor;
@@ -371,18 +393,18 @@ a:focus-visible,
 .home-link {
   /* Where it sits while the menu is open: in line with the start of the About text
      (menu button's left edge + the text inset, the same clamp() as in script.js),
-     but never closer than 10px to the cross (24px wide) */
-  --home-open-left: calc(var(--pad-l) + max(24px + 10px, clamp(16px, 3vw, 48px)));
+     but never closer than 10px to the cross (--btn-size wide) */
+  --home-open-left: calc(var(--pad-l) + max(var(--btn-size) + 10px, clamp(16px, 3vw, 48px)));
 
   position: absolute;
-  top: calc(var(--header-pad-top) + var(--name-size) * var(--name-cap-top));
+  top: var(--btn-top);
   left: 50%;
   transform: translateX(-50%);
   z-index: 20;   /* above the open menu, like the cross and the theme toggle */
 
   display: block;
-  width: 24px;
-  height: 24px;
+  width: var(--btn-size);
+  height: var(--btn-size);
 
   color: var(--ink);
   -webkit-tap-highlight-color: transparent;
@@ -431,8 +453,8 @@ a:focus-visible,
 /* On pages with the home icon the menu links keep clear of it (same room on the right,
    so they stay centered) */
 .header--bare ~ .menu .menu-links {
-  left: calc(var(--pad-l) + max(24px + 10px, clamp(16px, 3vw, 48px)) + 24px + 16px);
-  right: calc(var(--pad-r) + max(24px + 10px, clamp(16px, 3vw, 48px)) + 24px + 16px);
+  left: calc(var(--pad-l) + max(var(--btn-size) + 10px, clamp(16px, 3vw, 48px)) + var(--btn-size) + 16px);
+  right: calc(var(--pad-r) + max(var(--btn-size) + 10px, clamp(16px, 3vw, 48px)) + var(--btn-size) + 16px);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -441,9 +463,9 @@ a:focus-visible,
   }
 }
 
-.menu-open .menu-toggle span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.menu-open .menu-toggle span:nth-child(1) { transform: translateY(calc(var(--btn-size) * 7 / 24)) rotate(45deg); }
 .menu-open .menu-toggle span:nth-child(2) { opacity: 0; }
-.menu-open .menu-toggle span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+.menu-open .menu-toggle span:nth-child(3) { transform: translateY(calc(var(--btn-size) * -7 / 24)) rotate(-45deg); }
 
 /* Panel drops down from the top: one monotone orange glow, strongest at the outer
    (top) edge and ending right under "A small step to know me better."
@@ -652,21 +674,30 @@ a:focus-visible,
 /* Contacts: name + links on the left, photo on the right; stacked on narrow screens
    (photo first). The photo has a soft glow in the text color, so it is the opposite of
    the theme (dark glow on light, light glow on dark) and switches with the theme.
-   Sits right under the header; the photo's size follows the screen height, so the
-   whole page fits one screen without scrolling. The text column is exactly as tall as
-   the photo: the top of the name's capitals is level with the photo's top edge, the
-   baseline of the Instagram line with its bottom edge, the lines spread in between. */
+   The content sits low, just above the footer glow; the footer itself doesn't move.
+   The photo's size follows the screen height, so the page fits one screen. */
+
+/* Contacts only: the header buttons are a little bigger and a little lower */
+html.page-contacts {
+  --btn-size: 1.75rem;
+  --btn-drop: clamp(.375rem, 1.2vh, .875rem);
+}
+
 .main--contacts {
-  justify-content: flex-start;
+  justify-content: flex-end;
 
   /* height of the bare header (same sum as .header--bare in section 4) */
   --header-h: calc(var(--header-pad-top) + var(--name-size) + clamp(6px, 1vh, 12px) + var(--text) * 1.5);
-  /* where the content starts: a short gap under the menu / theme buttons. The bare
-     header is much taller than its buttons (it keeps the home page's layout), so
-     main is pulled up into it */
-  --content-top: calc(var(--header-pad-top) + var(--name-size) * var(--name-cap-top) + 24px + clamp(20px, 4vh, 48px));
+  /* the highest the content may start: a gap under the buttons. The bare header is much
+     taller than its buttons (it keeps the home page's layout), so main reaches into it */
+  --content-top: calc(var(--btn-top) + var(--btn-size) + clamp(1.25rem, 4vh, 3rem));
   margin-top: calc(var(--content-top) - var(--header-h));
-  padding: 0 0 calc(var(--glow-into-main) + clamp(8px, 2vh, 20px));
+  padding: 0 0 calc(var(--glow-into-main) + clamp(.5rem, 1.5vh, 1rem));
+
+  /* Spacing in the text column: one regular gap (Email -> LinkedIn -> Instagram),
+     and 1.4 times that between the name and Email */
+  --contact-gap: clamp(1.25rem, 6vh, 4rem);
+  --contact-gap-name: calc(var(--contact-gap) * 1.4);
 }
 
 /* The text starts exactly under the menu button (same left edge). The photo keeps the
@@ -674,36 +705,47 @@ a:focus-visible,
    one half before the photo and one after it. */
 .contact {
   display: flex;
-  align-items: stretch;
+  align-items: flex-start;
   justify-content: flex-start;
-  gap: clamp(32px, 7vw, 120px);
+  gap: clamp(2rem, 7vw, 7.5rem);
   margin: 0 var(--pad-r) 0 var(--pad-l);
+}
+
+/* Neutral head-and-shoulders silhouette: the photo frame until assets/photo.jpg exists,
+   and the enlarged view of it */
+.contact-photo,
+.photo-viewer-empty {
+  --silhouette: #8884;
+  --silhouette: color-mix(in srgb, var(--ink) 14%, transparent);
+
+  background-color: #8882;
+  background-color: color-mix(in srgb, var(--ink) 6%, var(--bg));
+  background-image:
+    radial-gradient(circle at 50% 38%, var(--silhouette) 0 17%, transparent calc(17% + 1px)),
+    radial-gradient(ellipse 42% 30% at 50% 100%, var(--silhouette) 0 99%, transparent 100%);
 }
 
 .contact-photo {
   position: relative;
   flex: none;
   margin-inline: auto;
-  /* Height: what's left of the screen after the header, the footer, the footer glow
-     and a little air, capped by the width (30vw wide at most) and by 520px;
-     width follows at 4:5 */
-  height: clamp(140px, min(100vh - var(--content-top) - var(--footer-h) - var(--glow-into-main) - 28px, 30vw * 1.25), 520px);
-  height: clamp(140px, min(100dvh - var(--content-top) - var(--footer-h) - var(--glow-into-main) - 28px, 30vw * 1.25), 520px);
+  /* Height: what's left of the screen after the buttons, the footer, its glow and a
+     little air, capped by the width (36vw wide at most) and by 40rem; width follows at 4:5 */
+  height: clamp(8.75rem, min(100vh - var(--content-top) - var(--footer-h) - var(--glow-into-main) - 1.5rem, 36vw * 1.25), 40rem);
+  height: clamp(8.75rem, min(100dvh - var(--content-top) - var(--footer-h) - var(--glow-into-main) - 1.5rem, 36vw * 1.25), 40rem);
   aspect-ratio: 4 / 5;
   overflow: hidden;
   border-radius: 4px;
-
-  /* Placeholder until assets/photo.jpg exists: a neutral head-and-shoulders silhouette */
-  background-color: #8882;
-  background-color: color-mix(in srgb, var(--ink) 6%, var(--bg));
-  background-image:
-    radial-gradient(circle at 50% 38%, var(--silhouette) 0 17%, transparent calc(17% + 1px)),
-    radial-gradient(ellipse 42% 30% at 50% 100%, var(--silhouette) 0 99%, transparent 100%);
-  --silhouette: #8884;
-  --silhouette: color-mix(in srgb, var(--ink) 14%, transparent);
+  cursor: zoom-in;
+  -webkit-tap-highlight-color: transparent;
 
   box-shadow: 0 0 clamp(18px, 3vw, 36px) rgba(128, 128, 128, .4);
   box-shadow: 0 0 clamp(18px, 3vw, 36px) color-mix(in srgb, var(--ink) 40%, transparent);
+}
+
+.contact-photo:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 4px;
 }
 
 .contact-photo img {
@@ -712,18 +754,15 @@ a:focus-visible,
   object-fit: cover;
 }
 
-/* Column as tall as the photo: name at the top, the three links spread down to the
-   bottom. The free height goes into the three gaps: name -> Email 35%, Email -> LinkedIn
-   and LinkedIn -> Instagram 32.5% each (rows 2, 4 and 6 below). The list shares the
-   column's rows (subgrid), so its items land in rows 3, 5 and 7. */
+/* Name at the top (its capitals level with the photo's top edge), then the links.
+   Spacing with margins only, no gap, so nothing adds up twice. */
 .contact-info {
   min-width: 0;
-  display: grid;
-  grid-template-rows: auto minmax(clamp(24px, 4vh, 48px), 35fr) auto minmax(12px, 32.5fr) auto minmax(12px, 32.5fr) auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .contact-name {
-  grid-row: 1;
   margin: 0;
 
   font-size: clamp(2rem, 5.2vw, 4.25rem);
@@ -731,23 +770,16 @@ a:focus-visible,
   line-height: 1.1;
   letter-spacing: .02em;
 
-  /* no empty strip above the capitals: their top touches the photo's top edge */
+  /* no empty strip above the capitals */
   text-box: trim-start cap alphabetic;
 }
 
-.contact-links {
-  grid-row: 3 / 8;
-  display: grid;
-  grid-template-rows: subgrid;
+.contact-links li {
+  margin-top: var(--contact-gap);
 }
 
-.contact-links li:nth-child(1) { grid-row: 1; }
-.contact-links li:nth-child(2) { grid-row: 3; }
-.contact-links li:nth-child(3) { grid-row: 5; }
-
-/* no empty strip under the last line: its baseline sits on the photo's bottom edge */
-.contact-links li:last-child {
-  text-box: trim-end cap alphabetic;
+.contact-links li:first-child {
+  margin-top: var(--contact-gap-name);
 }
 
 .contact-label {
@@ -779,36 +811,126 @@ a:focus-visible,
 @media (max-width: 600px), (orientation: portrait) and (max-width: 1100px) {
   .contact {
     flex-direction: column-reverse;   /* photo on top */
-    gap: clamp(16px, 3vh, 32px);
+    gap: clamp(1rem, 2.5vh, 2rem);
     text-align: center;
   }
 
-  .contact-info {
-    display: block;
+  .main--contacts {
+    --contact-gap: clamp(.5rem, 1.6vh, 1rem);
   }
 
-  /* Phones: the name and links take ~220px under the photo */
+  .contact {
+    align-items: stretch;
+  }
+
+  /* Phones: the name and links take ~16rem under the photo */
   .contact-photo {
     align-self: center;
-    height: clamp(80px, min(100vh - var(--content-top) - var(--footer-h) - 280px, 60vw * 1.25), 520px);
-    height: clamp(80px, min(100dvh - var(--content-top) - var(--footer-h) - 280px, 60vw * 1.25), 520px);
+    height: clamp(5rem, min(100vh - var(--content-top) - var(--footer-h) - 18rem, 70vw * 1.25), 32.5rem);
+    height: clamp(5rem, min(100dvh - var(--content-top) - var(--footer-h) - 18rem, 70vw * 1.25), 32.5rem);
   }
 
   .contact-name {
     font-size: clamp(1.6rem, 8vw, 2.25rem);
-    margin-bottom: clamp(10px, 2vh, 20px);
   }
+}
 
-  .contact-links {
-    display: flex;
-    flex-direction: column;
-    gap: clamp(8px, 1.5vh, 16px);
-  }
+/* Enlarged photo: opens over the page on a dark backdrop (script.js, <dialog>).
+   Closes on the backdrop, the cross or Esc. Shown whole, never cropped or stretched. */
+.photo-viewer {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: clamp(1rem, 4vw, 3rem);
+  border: 0;
+
+  background: transparent;
+  color: #fff;
+}
+
+.photo-viewer[open] {
+  display: grid;
+  place-items: center;
+  animation: fx-fade-in .25s ease;
+}
+
+.photo-viewer::backdrop {
+  background: rgba(0, 0, 0, .85);
+  animation: fx-fade-in .25s ease;
+}
+
+.photo-viewer-body {
+  display: contents;   /* the photo is laid out by the dialog's grid directly */
+}
+
+.photo-viewer img,
+.photo-viewer-empty {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100dvh - 2 * clamp(1rem, 4vw, 3rem));
+  border-radius: 4px;
+  cursor: zoom-out;
+}
+
+.photo-viewer img {
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.photo-viewer-empty {
+  height: min(80dvh, 92vw * 1.25);
+  aspect-ratio: 4 / 5;
+}
+
+.photo-viewer-close {
+  position: absolute;
+  top: clamp(1rem, 3vw, 2rem);
+  right: clamp(1rem, 3vw, 2rem);
+
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.photo-viewer-close::before {   /* bigger hit area for fingers */
+  content: "";
+  position: absolute;
+  inset: -.75rem;
+}
+
+.photo-viewer-close svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.photo-viewer-close:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .contact-links a {
     transition: none;
+  }
+
+  .photo-viewer[open],
+  .photo-viewer::backdrop {
+    animation: none;
   }
 }
 
@@ -1480,11 +1602,11 @@ html:not(.theme-switching)::view-transition-group(footer) {
 /* Same place and size as the menu button: a cross */
 .game-close {
   position: absolute;
-  top: calc(var(--header-pad-top) + var(--name-size) * var(--name-cap-top));
+  top: var(--btn-top);
   left: var(--pad-l);
 
-  width: 24px;
-  height: 24px;
+  width: var(--btn-size);
+  height: var(--btn-size);
   padding: 0;
   border: 0;
 

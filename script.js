@@ -595,3 +595,55 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   if (document.fonts) document.fonts.ready.then(fit);
   new ResizeObserver(fit).observe(main);
 })();
+
+
+/* ==========================================================================
+   Contacts: enlarged photo
+   Click, tap, Enter or Space on the photo opens it big in a <dialog> over the page.
+   Closes on the backdrop, the cross or Esc (the dialog handles Esc itself), and the
+   focus goes back to the photo. Without assets/photo.jpg it shows the silhouette.
+   ========================================================================== */
+
+(() => {
+  const photo = document.querySelector('.contact-photo');
+  const viewer = document.querySelector('.photo-viewer');
+  if (!photo || !viewer || typeof viewer.showModal !== 'function') return;
+  const body = viewer.querySelector('.photo-viewer-body');
+  const closeButton = viewer.querySelector('.photo-viewer-close');
+
+  function open() {
+    const img = photo.querySelector('img');
+    if (img && img.naturalWidth) {
+      const big = new Image();
+      big.src = img.currentSrc || img.src;
+      big.alt = img.alt;
+      body.replaceChildren(big);
+    } else {
+      const empty = document.createElement('div');
+      empty.className = 'photo-viewer-empty';
+      empty.setAttribute('role', 'img');
+      empty.setAttribute('aria-label', 'No photo yet');
+      body.replaceChildren(empty);
+    }
+    viewer.showModal();
+    closeButton.focus();
+  }
+
+  photo.addEventListener('click', open);
+  photo.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();   // Space would scroll the page
+      open();
+    }
+  });
+
+  closeButton.addEventListener('click', () => viewer.close());
+  // A click anywhere but the photo itself (the dark backdrop) closes it
+  viewer.addEventListener('click', (event) => {
+    if (!event.target.closest('img, .photo-viewer-empty, .photo-viewer-close')) viewer.close();
+  });
+  viewer.addEventListener('close', () => {
+    body.replaceChildren();
+    photo.focus();
+  });
+})();

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="page-contacts">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -77,14 +77,23 @@
         </ul>
       </div>
 
-      <!-- Photo: put the file at assets/photo.jpg and it shows up here, no code changes.
-           Until then the image fails to load, removes itself, and the frame shows a neutral
-           silhouette instead (drawn with CSS, see .contact-photo in style.css). -->
-      <div class="contact-photo">
+      <!-- Photo: "Photo for contacts.jpeg" in the site folder. If the file is missing, the
+           image removes itself and the frame shows a neutral silhouette instead (drawn with
+           CSS, see .contact-photo in style.css).
+           Click, tap or Enter opens it enlarged (script.js, the dialog below). -->
+      <div class="contact-photo" role="button" tabindex="0" aria-haspopup="dialog" aria-label="Open the photo">
         <img src="Photo for contacts.jpeg" alt="Roman Lav" width="800" height="1000" decoding="async" onerror="this.remove()">
       </div>
     </section>
   </main>
+
+  <!-- Enlarged photo, opened from the photo above -->
+  <dialog class="photo-viewer" aria-label="Photo">
+    <button class="photo-viewer-close" type="button" aria-label="Close">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 5l14 14M19 5 5 19" /></svg>
+    </button>
+    <div class="photo-viewer-body"></div>
+  </dialog>
 
   <footer class="footer">
     <a class="footer-animation" href="https://www.instagram.com/ugly.lav?rpxt=OGZma3gyYmdjb2tn&amp;utm_source=qr" target="_blank" rel="noopener" aria-label="Instagram: ugly.lav">
