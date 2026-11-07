@@ -898,7 +898,7 @@ html.page-contacts {
    one half before the photo and one after it. */
 .contact {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;   /* the text column sits at the bottom, next to the photo's bottom edge */
   justify-content: flex-start;
   gap: clamp(2rem, 7vw, 7.5rem);
   margin: 0 var(--pad-r) 0 var(--pad-l);
@@ -947,8 +947,9 @@ html.page-contacts {
   object-fit: cover;
 }
 
-/* Name at the top (its capitals level with the photo's top edge), then the links.
-   Spacing with margins only, no gap, so nothing adds up twice. */
+/* Name, then the links; the column sits at the bottom of the row, the last line's
+   baseline on the photo's bottom edge. Spacing with margins only, no gap, so nothing
+   adds up twice. */
 .contact-info {
   min-width: 0;
   display: flex;
@@ -973,6 +974,11 @@ html.page-contacts {
 
 .contact-links li:first-child {
   margin-top: var(--contact-gap-name);
+}
+
+/* no empty strip under the last line */
+.contact-links li:last-child {
+  text-box: trim-end cap alphabetic;
 }
 
 .contact-label {
@@ -1017,12 +1023,11 @@ html.page-contacts {
     --footer-h: calc(clamp(100px, 14vh, 150px) + .5rem);
   }
 
-  /* Centered between the header buttons and the footer glow: the same space above the
-     photo as below the text */
+  /* Pressed to the bottom of main, a small gap above the footer glow */
   .main--contacts {
-    justify-content: center;
+    justify-content: flex-end;
     --content-top: calc(var(--btn-top) + var(--btn-size));
-    padding-bottom: var(--glow-into-main);
+    padding-bottom: calc(var(--glow-into-main) + clamp(.25rem, .75vh, .75rem));
   }
 
   .contact {
