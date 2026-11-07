@@ -408,11 +408,31 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   /* ---- Start position, and keep the same place on resize ----
      The album size depends on both width and height, so the album itself is observed too. */
 
+  // Touch screens: keep the album that was in the middle in the middle (turning a phone
+  // sideways and back changes the album size and how many are on screen)
+  const touchScreen = window.matchMedia('(hover: none) and (pointer: coarse)');
+  let middleItem = null;
+  scroller.addEventListener('scroll', () => {
+    if (touchScreen.matches) middleItem = centeredCover()?.closest('li') || middleItem;
+  }, { passive: true });
+
   function layout() {
     measure();
     scroller.scrollLeft = home + place * period;
+    if (touchScreen.matches && middleItem) {
+      const box = scroller.getBoundingClientRect();
+      const r = middleItem.getBoundingClientRect();
+      scroller.scrollLeft += r.left + r.width / 2 - (box.left + box.width / 2);
+    }
     pos = scroller.scrollLeft;
   }
+
+  // Phone turned back upright from the albums-only view: play the album in the middle
+  const sideways = window.matchMedia('(orientation: landscape) and (max-height: 500px) and (hover: none) and (pointer: coarse)');
+  sideways.addEventListener('change', () => {
+    if (sideways.matches) return;
+    setTimeout(switchOnSwipe, 350);   // after the layout has settled
+  });
 
   layout();
   const resizeObserver = new ResizeObserver(layout);

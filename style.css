@@ -1001,7 +1001,7 @@ html.page-contacts {
 @media (max-width: 600px), (orientation: portrait) and (max-width: 1100px) {
   .contact {
     flex-direction: column-reverse;   /* photo on top */
-    gap: clamp(1rem, 2.5vh, 2rem);
+    gap: clamp(3rem, 7.5vh, 6rem);   /* photo -> name: three times the old space */
     text-align: center;
   }
 
@@ -1011,7 +1011,7 @@ html.page-contacts {
 
   /* The footer starts higher (taller), so the page content is a little shorter */
   html.page-contacts {
-    --footer-h: calc(clamp(100px, 14vh, 150px) + 2.5rem);
+    --footer-h: calc(clamp(100px, 14vh, 150px) + .5rem);
   }
 
   /* Centered between the header buttons and the footer glow: the same space above the
@@ -1029,8 +1029,8 @@ html.page-contacts {
   /* Phones: the name and links take ~15rem under the photo, plus air above and below */
   .contact-photo {
     align-self: center;
-    height: clamp(5rem, min(100vh - var(--content-top) - var(--footer-h) - var(--glow-into-main) - 17.5rem, 84vw * 1.25), 32.5rem);
-    height: clamp(5rem, min(100dvh - var(--content-top) - var(--footer-h) - var(--glow-into-main) - 17.5rem, 84vw * 1.25), 32.5rem);
+    height: clamp(5rem, min(100vh - var(--content-top) - var(--footer-h) - var(--glow-into-main) - 17.25rem, 84vw * 1.25), 32.5rem);
+    height: clamp(5rem, min(100dvh - var(--content-top) - var(--footer-h) - var(--glow-into-main) - 17.25rem, 84vw * 1.25), 32.5rem);
   }
 
   .contact-name {
@@ -1094,8 +1094,13 @@ html.page-contacts {
    top row of credits, centered between it and the footer */
 @media (max-width: 600px), (hover: none) and (pointer: coarse) and (max-width: 1100px) {
   .main--contacts {
-    --content-top: calc(var(--top-band) + clamp(8px, 2vh, 16px));
+    --content-top: var(--top-band);
     margin-top: 0;
+  }
+
+  /* no extra space under the credits here: the photo needs the room */
+  html.page-contacts .header--bare {
+    min-height: var(--top-band);
   }
 }
 
@@ -1198,12 +1203,12 @@ html.page-contacts {
 @media (max-width: 600px) {
   :root {
     /* Album: from the theme toggle's left edge to the menu button's right edge (the
-       page gutters), smaller on short screens so the page never scrolls (room for
-       the header, heading, title + artist and the footer with the buttons).
+       page gutters). Only very short screens (an iPhone SE) make it smaller, so the
+       page never scrolls.
        The gap between albums equals the space left on each side, so the neighbours
        start exactly at the screen edges and stay out of sight. */
-    --album-w: min(100vw - var(--pad-l) - var(--pad-r), (100vh - 21rem) * 0.86);
-    --album-w: min(100vw - var(--pad-l) - var(--pad-r), (100dvh - 21rem) * 0.86);
+    --album-w: min(100vw - var(--pad-l) - var(--pad-r), (100vh - 13.5rem) * 0.82);
+    --album-w: min(100vw - var(--pad-l) - var(--pad-r), (100dvh - 13.5rem) * 0.82);
     --gap: calc((100vw - var(--album-w)) / 2);
   }
 
@@ -1242,7 +1247,10 @@ html.page-contacts {
   /* Content sits a little below the header; the footer takes all the space under it */
   .main:has(.carousel) {
     flex: 0 0 auto;
-    padding: clamp(28px, 11vh, 120px) 0 12px;
+    /* top: half of the height left over by the name, heading, album, title + artist
+       and the button row (the footer takes the other half) */
+    padding: clamp(8px, (100vh - var(--album-w) * 1.21 - 12.5rem) / 2, 120px) 0 12px;
+    padding-top: clamp(8px, (100dvh - var(--album-w) * 1.21 - 12.5rem) / 2, 120px);
   }
 
   /* Heading in line with the album's left edge */
@@ -1279,13 +1287,14 @@ html.page-contacts {
   .player-toggle {
     position: fixed;
     left: 50%;
-    bottom: calc(var(--btn-bottom) + (var(--btn-size) - 1.75rem) / 2);
+    bottom: var(--btn-bottom);
     z-index: 20;
     transform: translateX(-50%);
 
+    /* the same size as the theme toggle and the menu button */
     display: block;
-    width: 1.75rem;
-    height: 1.75rem;
+    width: var(--btn-size);
+    height: var(--btn-size);
     padding: 0;
     border: 0;
 
@@ -1636,6 +1645,51 @@ html.page-contacts {
     -webkit-line-clamp: 2;
     line-clamp: 2;
     overflow: hidden;
+  }
+}
+
+
+/* Phones held sideways, home page: nothing but the albums. No header, footer, menu,
+   buttons, heading or titles: one big carousel across the whole screen, three whole
+   covers at a time (15px or more above and below), small gaps between them. Tap a
+   cover to play or pause it. Turning the phone back upright brings the page back, and
+   the music switches to the album in the middle (script.js). */
+@media (orientation: landscape) and (max-height: 500px) and (hover: none) and (pointer: coarse) {
+  :root:has(.carousel) {
+    --gap: 10px;
+    --album-w: min(100vh - 30px, (100vw - 4 * var(--gap)) / 3);
+    --album-w: min(100dvh - 30px, (100vw - 4 * var(--gap)) / 3);
+  }
+
+  body:has(.carousel) {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  body:has(.carousel) > .header,
+  body:has(.carousel) > .menu,
+  body:has(.carousel) > .footer,
+  .main:has(.carousel) .albums-heading,
+  .main:has(.carousel) .album-info {
+    display: none;
+  }
+
+  .main:has(.carousel) {
+    flex: 1 1 auto;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .main:has(.carousel) .albums {
+    padding-inline: calc(var(--gap) / 2);
+    scroll-snap-type: x mandatory;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .main:has(.carousel) .albums > li {
+    scroll-snap-align: center;
   }
 }
 
