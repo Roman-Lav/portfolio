@@ -1161,6 +1161,13 @@ html.page-contacts {
     --top-band: calc(env(safe-area-inset-top, 0px) + clamp(.75rem, 4vh, 1.5rem));
   }
 
+  /* bigger buttons sideways (upright phones size them separately, section 5c) */
+  :root,
+  html.page-contacts {
+    --btn-size: 1.875rem;
+    --home-size: 1.875rem;
+  }
+
   /* Buttons: at the bottom of the page (body), not of the screen */
   body {
     position: relative;
@@ -1781,24 +1788,24 @@ html.page-contacts {
     display: none;
   }
 
-  /* Only the menu button is left: a little bigger, on the right-hand cover, its top just
-     below the covers' top edge, the same distance in from the cover's right edge. White
-     with a soft shadow, so it shows on any cover. */
+  /* Only the menu button is left: on the bottom right corner of the right-hand cover
+     (.75rem in from both edges), a step bigger than on the other pages. Text color with
+     a faint halo of the page background (50% opaque), so it shows on any cover. */
   body:has(.carousel) > .header {
     position: static;
     padding: 0;
   }
 
   body:has(.carousel) .menu-toggle {
-    --btn-size: 2rem;
+    --btn-size: 2.125rem;
     position: fixed;
-    top: calc((100vh - var(--album-w)) / 2 + .75rem);
-    top: calc((100dvh - var(--album-w)) / 2 + .75rem);
+    top: auto;
+    bottom: calc((100vh - var(--album-w)) / 2 + .75rem);
+    bottom: calc((100dvh - var(--album-w)) / 2 + .75rem);
     right: calc(var(--gap) + .75rem);
-    bottom: auto;
     left: auto;
-    color: #fff;
-    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .45));
+    --halo: color-mix(in srgb, var(--bg) 50%, transparent);
+    filter: drop-shadow(0 0 1px var(--halo)) drop-shadow(0 0 2.5px var(--halo)) drop-shadow(0 0 7px var(--halo));
   }
 
   /* The menu: a strip from the right edge, half an album wide, links one under another */
