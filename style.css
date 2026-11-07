@@ -639,14 +639,17 @@ a:focus-visible,
 
 
 /* ==========================================================================
-   5d. Phones and tablets: controls at the bottom, credits at the top
+   5d. Phones: controls at the bottom, credits at the top
+   Phones = up to 600px wide (upright), or sideways with a touch screen and at most
+   500px of height. Tablets (wider, or taller when sideways) and computers keep the
+   desktop layout: buttons in the header, credits in the footer.
    Made for the thumb: the theme toggle (left), the home icon (middle, inner
    pages) and the menu button (right) sit at the bottom, on the footer glow. The
    menu rises from the bottom. "*Tap Me" with its animation and "PROJECT .LAV /
    (c) 2026" move up to the top. Same media query as in script.js (SWAP).
    ========================================================================== */
 
-@media (max-width: 600px), (hover: none) and (pointer: coarse) and (max-width: 1100px) {
+@media (max-width: 600px), (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
   :root {
     /* bottom row: distance of the buttons from the bottom edge */
     --btn-bottom: calc(env(safe-area-inset-bottom, 0px) + clamp(16px, 3.5vh, 32px));
@@ -1090,9 +1093,9 @@ html.page-contacts {
   aspect-ratio: 4 / 5;
 }
 
-/* Phones and tablets (controls at the bottom, section 5d): the content starts under the
+/* Phones (controls at the bottom, section 5d): the content starts under the
    top row of credits, centered between it and the footer */
-@media (max-width: 600px), (hover: none) and (pointer: coarse) and (max-width: 1100px) {
+@media (max-width: 600px), (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
   .main--contacts {
     --content-top: var(--top-band);
     margin-top: 0;

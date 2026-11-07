@@ -1,8 +1,8 @@
 'use strict';
 
-// Phones and tablets: header controls at the bottom, footer credits at the top
-// (the same media query as section 5d in style.css)
-const SWAP = '(max-width: 600px), (hover: none) and (pointer: coarse) and (max-width: 1100px)';
+// Phones: header controls at the bottom, footer credits at the top. Phones = up to 600px
+// wide, or sideways with a touch screen and at most 500px tall (section 5d in style.css)
+const SWAP = '(max-width: 600px), (orientation: landscape) and (max-height: 500px) and (pointer: coarse)';
 
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
