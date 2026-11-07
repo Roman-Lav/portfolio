@@ -5,7 +5,7 @@
    1. Storm      – faint lightning strikes in the background (canvas)
    2. Glow       – soft orange light that follows the mouse
    3. Grain      – film grain over the whole page (pure CSS, see style.css)
-   4. Scramble   – "ROMAN LAV" and "PROJECT .LAV" decode themselves on load and on hover
+   4. Scramble   – "ROMAN LAV" and "PROJECT .LAV" decode themselves once on page load
    5. Tilt       – album covers tilt in 3D under the mouse, with a glare
    ========================================================================== */
 
@@ -192,7 +192,7 @@
   /* ---- 4. Text scramble ------------------------------------------------
      Letters turn into random glyphs and settle back left to right.
      Used on "ROMAN LAV" (header) and "PROJECT .LAV" (footer):
-     on page load, and again on mouse hover. */
+     once on page load, never on hover. */
 
   const GLYPHS = 'ABCDEFGHKLNOPRSTUVXYZ0123456789';   // no extra-wide letters (W, M…)
   const KEEP = new Set([' ', '.']);                    // these stay put
@@ -229,7 +229,7 @@
   }
 
   // Header and footer always scramble together: same start, same duration.
-  // Hovering either one replays both.
+  // Runs once per page load (opening the site or following a link), never on hover.
   const scrambleTargets = ['.name a', '.footer-project']
     .map((selector) => document.querySelector(selector))
     .filter(Boolean);
@@ -237,9 +237,6 @@
   const scrambleAll = (duration) => scramblers.forEach((scramble) => scramble(duration));
 
   scrambleAll(1200);
-  if (finePointer.matches) {
-    scrambleTargets.forEach((el) => el.addEventListener('pointerenter', () => scrambleAll(600)));
-  }
 
 
   /* ---- 5. Album tilt ---------------------------------------------------- */

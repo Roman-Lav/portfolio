@@ -19,7 +19,7 @@
   --progress-track: rgba(42, 42, 42, .15);
   --progress-fill: rgba(42, 42, 42, .8);
 
-  --footer-text: var(--bg);                /* footer + menu text: page background color, follows the theme */
+  --footer-text: #fff;                     /* footer + menu text: always white, in both themes */
 
   --toggle-bg: #18191a;                    /* theme button shows the opposite theme */
   --toggle-glow: rgba(255, 120, 0, .45);
@@ -347,16 +347,66 @@ a:focus-visible,
   color: var(--footer-text);
 }
 
+/* Home icon (inner pages only): centered between the menu button and the theme toggle,
+   same size, top and color as the menu button. Steps aside while the menu is open,
+   because the menu links take that spot. */
+.home-link {
+  position: absolute;
+  top: calc(var(--header-pad-top) + var(--name-size) * var(--name-cap-top));
+  left: 50%;
+  transform: translateX(-50%);
+
+  display: block;
+  width: 24px;
+  height: 24px;
+
+  color: var(--ink);
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity .3s ease, filter .2s ease;
+}
+
+.home-link::before {
+  content: "";
+  position: absolute;
+  inset: -10px;
+}
+
+.home-link svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.home-link:hover {
+  filter: drop-shadow(0 0 6px rgba(var(--glow-rgb), .9));
+}
+
+.home-link:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
+}
+
+.menu-open .home-link {
+  opacity: 0;
+  visibility: hidden;   /* also out of the Tab order */
+  transition: opacity .3s ease, visibility 0s linear .3s;
+}
+
 .menu-open .menu-toggle span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
 .menu-open .menu-toggle span:nth-child(2) { opacity: 0; }
 .menu-open .menu-toggle span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
 /* Panel drops down from the top: one monotone orange glow, strongest at the outer
-   (top) edge and fading out just above "Collection of my favorite sounds"
-   (--menu-h = top of that heading, set by script.js). The name and intro hide
+   (top) edge and ending right under "A small step to know me better."
+   (--menu-h = bottom of the header, set by script.js). The name and intro hide
    while it is open. Menu button (left) and theme toggle (right) stay on top. */
 .menu {
-  --menu-gap: 8px;   /* clear space between the glow and the heading */
+  --menu-gap: 0px;   /* flush with the bottom of the intro line */
 
   position: fixed;
   top: 0;
@@ -970,20 +1020,61 @@ html:not(.theme-switching) .footer       { view-transition-name: footer; }
 html:not(.theme-switching) .menu-toggle  { view-transition-name: menu-toggle; }
 html:not(.theme-switching) .theme-toggle { view-transition-name: theme-toggle; }
 
+/* Old page fades out quickly, the new one fades in just after it, so they don't
+   blur into each other. Only opacity and transform: both run on the GPU and stay
+   smooth on phones (no filter/blur, which repaints the whole screen every frame). */
 html:not(.theme-switching)::view-transition-old(root) {
-  animation: fx-page-out .3s cubic-bezier(.4, 0, 1, 1) both;
+  animation: fx-page-out .22s cubic-bezier(.4, 0, 1, 1) both;
 }
 
 html:not(.theme-switching)::view-transition-new(root) {
-  animation: fx-page-in .45s cubic-bezier(0, 0, .2, 1) both;
+  animation: fx-page-in .5s cubic-bezier(.2, .7, .2, 1) .12s both;
+}
+
+/* The menu button turns from a cross back into bars over the same time */
+html:not(.theme-switching)::view-transition-group(menu-toggle),
+html:not(.theme-switching)::view-transition-group(theme-toggle),
+html:not(.theme-switching)::view-transition-group(footer) {
+  animation-duration: .5s;
+  animation-timing-function: cubic-bezier(.2, .7, .2, 1);
 }
 
 @keyframes fx-page-out {
-  to { opacity: 0; filter: blur(8px); transform: translateY(-10px); }
+  to { opacity: 0; transform: translateY(-6px); }
 }
 
 @keyframes fx-page-in {
-  from { opacity: 0; filter: blur(8px); transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(8px); }
+}
+
+/* Fallback for browsers without cross-page View Transitions (Firefox, older Safari).
+   The <head> script adds .page-fade; script.js adds .page-leaving on a link click
+   and opens the next page once the fade-out is done. The buttons and the footer
+   don't move, only the content changes, just like with View Transitions. */
+.page-fade .main,
+.page-fade .name,
+.page-fade .intro,
+.page-fade .home-link {
+  /* backwards, not both: once it ends, the fade-out transition and the
+     menu's own opacity rules work normally again */
+  animation: fx-fade-in .5s cubic-bezier(.2, .7, .2, 1) backwards;
+}
+
+.page-fade .main {
+  animation-name: fx-page-in;
+}
+
+.page-fade.page-leaving .main,
+.page-fade.page-leaving .name,
+.page-fade.page-leaving .intro,
+.page-fade.page-leaving .home-link,
+.page-fade.page-leaving .menu {
+  opacity: 0;
+  transition: opacity .22s cubic-bezier(.4, 0, 1, 1);
+}
+
+@keyframes fx-fade-in {
+  from { opacity: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -991,6 +1082,13 @@ html:not(.theme-switching)::view-transition-new(root) {
   ::view-transition-old(*),
   ::view-transition-new(*) {
     animation: none !important;
+  }
+
+  .page-fade .main,
+  .page-fade .name,
+  .page-fade .intro,
+  .page-fade .home-link {
+    animation: none;
   }
 }
 

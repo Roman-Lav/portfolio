@@ -376,11 +376,12 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   const isOpen = () => root.classList.contains('menu-open');
 
-  // The glow ends just above "Collection of my favorite sounds" (inner pages: at the top of main)
-  const heading = document.querySelector('.albums-heading') || document.querySelector('.main');
+  // The glow ends right under "A small step to know me better." = bottom of the header
+  // (inner pages: the bare header is just as tall)
+  const header = document.querySelector('.header');
   function fitWidth() {
-    if (!heading) return;
-    root.style.setProperty('--menu-h', `${Math.round(heading.getBoundingClientRect().top + window.scrollY)}px`);
+    if (!header) return;
+    root.style.setProperty('--menu-h', `${Math.round(header.getBoundingClientRect().bottom + window.scrollY)}px`);
   }
 
   fitWidth();
@@ -404,5 +405,44 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
       setOpen(false);
       button.focus();
     }
+  });
+})();
+
+
+/* ==========================================================================
+   Page transitions, fallback
+   Browsers with cross-page View Transitions animate on their own (style.css, section 13).
+   The rest (.page-fade, set in <head>) fade the content out here first,
+   then open the next page, which fades back in with CSS.
+   ========================================================================== */
+
+(() => {
+  const root = document.documentElement;
+  if (!root.classList.contains('page-fade')) return;
+
+  const FADE_OUT = 220;   // ms, matches the transition in style.css
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  document.addEventListener('click', (event) => {
+    const link = event.target.closest('a[href]');
+    if (!link || event.defaultPrevented || reduce.matches) return;
+    // Let the browser handle new tabs, downloads and modified clicks (Cmd/Ctrl/Shift/middle)
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (link.target && link.target !== '_self') return;
+    if (link.hasAttribute('download')) return;
+
+    const url = new URL(link.href, location.href);
+    if (url.origin !== location.origin) return;
+    // A jump to an anchor on this same page: no transition
+    if (url.pathname === location.pathname && url.search === location.search) return;
+
+    event.preventDefault();
+    root.classList.add('page-leaving');
+    setTimeout(() => { location.href = url.href; }, FADE_OUT);
+  });
+
+  // Coming back with the Back button can restore the faded-out page from cache: show it again
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) root.classList.remove('page-leaving');
   });
 })();

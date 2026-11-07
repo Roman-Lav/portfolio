@@ -17,8 +17,16 @@
         theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       }
       document.documentElement.setAttribute('data-theme', theme);
+      // No cross-page View Transitions (Firefox, older Safari): pages fade with CSS instead
+      if (!('CSSViewTransitionRule' in window)) document.documentElement.classList.add('page-fade');
       if (theme === 'dark') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#18191a');
     })();
+  </script>
+
+  <!-- Load the next page in advance when the pointer rests on its link (or a finger touches it),
+       so the switch starts without waiting for the network -->
+  <script type="speculationrules">
+    { "prefetch": [{ "source": "document", "where": { "selector_matches": ".menu-links a, .home-link" }, "eagerness": "moderate" }] }
   </script>
 
   <link rel="stylesheet" href="style.css">
