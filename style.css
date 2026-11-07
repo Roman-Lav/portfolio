@@ -981,6 +981,18 @@ html.page-contacts {
   text-box: trim-end cap alphabetic;
 }
 
+/* Computers (mouse or trackpad): the name goes up to the top of the photo, the tops of
+   its capitals level with the photo's top edge; the links stay at the bottom */
+@media (hover: hover) and (pointer: fine) {
+  .contact-info {
+    align-self: stretch;
+  }
+
+  .contact-links {
+    margin-top: auto;
+  }
+}
+
 .contact-label {
   display: block;
 
