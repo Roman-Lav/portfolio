@@ -1112,6 +1112,47 @@ html.page-contacts {
   }
 }
 
+/* Phones held sideways (About, Vox, Contacts): "PROJECT .LAV / (c) 2026" goes; the
+   rest of the page fits the short screen. Contacts: the name and links on the left, the
+   photo against the right edge, side by side, no scrolling. (The home page has its own
+   albums-only view, section 10.) Safe areas: the gutters already keep clear of the
+   notch (--pad-l / --pad-r use env(safe-area-inset-*)). */
+@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
+  html .footer-credits {
+    display: none;
+  }
+
+  html.page-contacts {
+    --glow-into-main: .75rem;
+    --footer-h: calc(var(--btn-bottom) + var(--btn-size) + 2rem);
+  }
+
+  html.page-contacts .header--bare {
+    min-height: var(--top-band);
+  }
+
+  .main--contacts {
+    --contact-gap: clamp(.375rem, 2.2vh, .75rem);
+    justify-content: flex-end;
+    padding-bottom: calc(var(--glow-into-main) + .5rem);
+  }
+
+  .contact {
+    align-items: flex-end;
+  }
+
+  .contact-photo {
+    margin-left: auto;
+    margin-right: 0;
+    height: clamp(5rem, 100vh - var(--top-band) - var(--footer-h) - var(--glow-into-main) - 1.25rem, 40rem);
+    height: clamp(5rem, 100dvh - var(--top-band) - var(--footer-h) - var(--glow-into-main) - 1.25rem, 40rem);
+  }
+
+  .contact-name {
+    font-size: clamp(1.5rem, 4vw, 2.25rem);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .contact-links a {
     transition: none;

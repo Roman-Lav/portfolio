@@ -716,8 +716,9 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     }
 
     const inset = Math.min(48, Math.max(16, window.innerWidth * 0.03));
-    // Phones: the text runs the full width between the outer edges of the two buttons
-    const insetX = phone.matches ? 0 : inset;
+    // Phones (upright or sideways): the text runs the full width between the outer edges
+    // of the two buttons
+    const insetX = phone.matches || window.matchMedia(SWAP).matches ? 0 : inset;
     // The buttons swap sides on phones, so take whichever is further left / right
     const left = Math.min(menu.left, theme.left);
     const right = Math.max(menu.right, theme.right);
